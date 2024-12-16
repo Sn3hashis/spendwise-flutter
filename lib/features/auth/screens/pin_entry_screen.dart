@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import '../../../core/widgets/system_ui_wrapper.dart';
 import '../screens/login_screen.dart';
+import '../../main/screens/main_layout_screen.dart';
 
 enum PinEntryMode { setup, verify }
 
@@ -47,10 +48,10 @@ class _PinEntryScreenState extends State<PinEntryScreen> {
     }
   }
 
-  void _handlePinComplete() async {
+  void _handlePinComplete() {
     if (widget.mode == PinEntryMode.setup) {
       if (widget.setupConfirmPin == null) {
-        // First time entering PIN during setup
+        // First time entering PIN
         Navigator.pushReplacement(
           context,
           CupertinoPageRoute(
@@ -61,11 +62,15 @@ class _PinEntryScreenState extends State<PinEntryScreen> {
           ),
         );
       } else {
-        // Confirming PIN during setup
+        // Confirming PIN
         if (currentPin == widget.setupConfirmPin) {
-          // TODO: Store PIN in local storage and Firebase
-          // Navigate to home screen
-          // Navigator.pushReplacement(...);
+          // Navigate to main layout
+          Navigator.pushReplacement(
+            context,
+            CupertinoPageRoute(
+              builder: (context) => const MainLayoutScreen(),
+            ),
+          );
         } else {
           setState(() {
             errorMessage = 'PINs do not match. Please try again.';
@@ -74,15 +79,14 @@ class _PinEntryScreenState extends State<PinEntryScreen> {
         }
       }
     } else {
-      // TODO: Verify PIN against stored value
-      // if (currentPin == storedPin) {
-      //   Navigator.pushReplacement(...);
-      // } else {
-      //   setState(() {
-      //     errorMessage = 'Incorrect PIN. Please try again.';
-      //     currentPin = '';
-      //   });
-      // }
+      // Verify PIN
+      // TODO: Add PIN verification logic
+      Navigator.pushReplacement(
+        context,
+        CupertinoPageRoute(
+          builder: (context) => const MainLayoutScreen(),
+        ),
+      );
     }
   }
 
