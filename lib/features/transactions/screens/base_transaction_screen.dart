@@ -13,6 +13,9 @@ import '../../../features/categories/models/category_model.dart';
 import 'dart:io';
 import '../../../features/transactions/widgets/repeat_dialog.dart';
 import '../../../features/categories/screens/categories_screen.dart';
+import '../../../features/transactions/models/transaction_model.dart';
+import '../../../features/transactions/providers/transactions_provider.dart';
+import '../models/repeat_frequency.dart';
 
 enum TransactionType { income, expense, transfer }
 
@@ -140,6 +143,7 @@ class _BaseTransactionScreenState extends ConsumerState<BaseTransactionScreen> {
   bool _isRepeat = false;
   RepeatFrequency _repeatFrequency = RepeatFrequency.monthly;
   DateTime? _repeatEndDate;
+  Category? _selectedCategory;
 
   @override
   void initState() {
@@ -182,6 +186,105 @@ class _BaseTransactionScreenState extends ConsumerState<BaseTransactionScreen> {
     setState(() {
       _attachments.removeAt(index);
     });
+  }
+
+  void _saveTransaction() {
+    if (!_isValid || _selectedCategory == null) return;
+
+    final amount = double.parse(_amountController.text);
+    
+    final transaction = Transaction(
+      id: DateTime.now().toString(),
+      amount: widget.type == TransactionType.expense ? -amount : amount,  // Make expense negative
+      description: _descriptionController.text,
+      category: _selectedCategory!,
+      date: DateTime.now(),
+      currencyCode: ref.read(settingsProvider).currency,
+      attachments: _attachments,
+      isRepeat: _isRepeat,
+      repeatFrequency: _isRepeat ? _repeatFrequency : null,
+      repeatEndDate: _repeatEndDate,
+    );
+
+    ref.read(transactionsProvider.notifier).addTransaction(transaction);
+    Navigator.pop(context);
+  }
+
+  Widget _buildCategorySelector(bool isDarkMode) {
+    return Container(
+      decoration: BoxDecoration(
+        color: isDarkMode ? AppTheme.cardDark : AppTheme.cardLight,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isDarkMode 
+              ? const Color(0xFF2C2C2E) 
+              : const Color(0xFFE5E5EA),
+        ),
+      ),
+      child: CupertinoButton(
+        padding: const EdgeInsets.all(16),
+        onPressed: () async {
+          final result = await Navigator.push<Category>(
+            context,
+            CupertinoPageRoute(
+              builder: (context) => CategoriesScreen(
+                filterType: widget.type == TransactionType.income 
+                    ? CategoryType.income 
+                    : CategoryType.expense,
+              ),
+            ),
+          );
+          if (result != null) {
+            setState(() => _selectedCategory = result);
+          }
+        },
+        child: Row(
+          children: [
+            if (_selectedCategory != null) ...[
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: _selectedCategory!.color.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  _selectedCategory!.icon,
+                  color: _selectedCategory!.color,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                _selectedCategory!.name,
+                style: TextStyle(
+                  fontSize: 17,
+                  color: isDarkMode 
+                      ? CupertinoColors.white 
+                      : CupertinoColors.black,
+                ),
+              ),
+            ] else
+              Text(
+                'Select Category',
+                style: TextStyle(
+                  fontSize: 17,
+                  color: isDarkMode 
+                      ? CupertinoColors.systemGrey 
+                      : CupertinoColors.systemGrey2,
+                ),
+              ),
+            const Spacer(),
+            Icon(
+              CupertinoIcons.chevron_right,
+              color: isDarkMode 
+                  ? CupertinoColors.systemGrey 
+                  : CupertinoColors.systemGrey2,
+              size: 20,
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -300,56 +403,7 @@ class _BaseTransactionScreenState extends ConsumerState<BaseTransactionScreen> {
                   child: Column(
                     children: [
                       // Category Selector
-                      Container(
-                        decoration: BoxDecoration(
-                          color: isDarkMode ? AppTheme.cardDark : AppTheme.cardLight,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: isDarkMode 
-                                ? const Color(0xFF2C2C2E) 
-                                : const Color(0xFFE5E5EA),
-                          ),
-                        ),
-                        child: CupertinoButton(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              CupertinoPageRoute(
-                                builder: (context) => CategoriesScreen(
-                                  filterType: widget.type == TransactionType.income 
-                                      ? CategoryType.income 
-                                      : CategoryType.expense,
-                                ),
-                              ),
-                            );
-                          },
-                          child: Row(
-                            children: [
-                              Text(
-                                'Category',
-                                style: TextStyle(
-                                  fontSize: 17,
-                                  color: isDarkMode 
-                                      ? CupertinoColors.white 
-                                      : CupertinoColors.black,
-                                ),
-                              ),
-                              const Spacer(),
-                              Icon(
-                                CupertinoIcons.chevron_down,
-                                size: 16,
-                                color: isDarkMode 
-                                    ? CupertinoColors.systemGrey 
-                                    : CupertinoColors.systemGrey2,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+                      _buildCategorySelector(isDarkMode),
                       const SizedBox(height: 16),
                       // Description Field
                       Container(
@@ -632,11 +686,7 @@ class _BaseTransactionScreenState extends ConsumerState<BaseTransactionScreen> {
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 borderRadius: BorderRadius.circular(30),
                 color: themeColor,
-                onPressed: _isValid ? () async {
-                  await HapticService.lightImpact(ref);
-                  // TODO: Handle save
-                  Navigator.pop(context);
-                } : null,
+                onPressed: _isValid && _selectedCategory != null ? _saveTransaction : null,
                 child: const Center(
                   child: Text(
                     'Save',

@@ -8,6 +8,9 @@ import '../models/transaction_filter.dart';
 import '../screens/filter_screen.dart';
 import '../widgets/date_range_selector.dart';
 import '../../../core/services/haptic_service.dart';
+import '../models/transaction_model.dart';
+import '../../categories/providers/categories_provider.dart';
+import '../providers/transactions_provider.dart';
 
 class TransactionsScreen extends ConsumerStatefulWidget {
   const TransactionsScreen({super.key});
@@ -44,6 +47,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   Widget build(BuildContext context) {
     final isDarkMode = ref.watch(themeProvider);
     final settings = ref.watch(settingsProvider);
+    final transactions = ref.watch(transactionsProvider);
 
     return CupertinoPageScaffold(
       backgroundColor: isDarkMode ? AppTheme.backgroundDark : AppTheme.backgroundLight,
@@ -54,7 +58,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Expanded(
                     child: DateRangeSelector(
@@ -67,64 +71,60 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                       },
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: CupertinoButton(
-                      padding: EdgeInsets.zero,
-                      child: Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          Icon(
-                            CupertinoIcons.slider_horizontal_3,
-                            color: isDarkMode ? CupertinoColors.white : CupertinoColors.black,
-                          ),
-                          if (_getActiveFilterCount() > 0)
-                            Positioned(
-                              top: -8,
-                              right: -8,
-                              child: Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: const BoxDecoration(
-                                  color: CupertinoColors.systemPurple,
-                                  shape: BoxShape.circle,
-                                ),
-                                constraints: const BoxConstraints(
-                                  minWidth: 16,
-                                  minHeight: 16,
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    _getActiveFilterCount().toString(),
-                                    style: const TextStyle(
-                                      color: CupertinoColors.white,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                    ),
+                  CupertinoButton(
+                    padding: EdgeInsets.zero,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Icon(
+                          CupertinoIcons.slider_horizontal_3,
+                          color: isDarkMode ? CupertinoColors.white : CupertinoColors.black,
+                        ),
+                        if (_getActiveFilterCount() > 0)
+                          Positioned(
+                            top: -8,
+                            right: -8,
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: const BoxDecoration(
+                                color: CupertinoColors.systemPurple,
+                                shape: BoxShape.circle,
+                              ),
+                              constraints: const BoxConstraints(
+                                minWidth: 16,
+                                minHeight: 16,
+                              ),
+                              child: Center(
+                                child: Text(
+                                  _getActiveFilterCount().toString(),
+                                  style: const TextStyle(
+                                    color: CupertinoColors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
                               ),
                             ),
-                        ],
-                      ),
-                      onPressed: () async {
-                        await HapticService.lightImpact(ref);
-                        if (!mounted) return;
-                        
-                        showCupertinoModalPopup<void>(
-                          context: context,
-                          builder: (BuildContext context) => FilterScreen(
-                            initialFilter: _filter,
-                            onApply: (filter) {
-                              setState(() {
-                                _filter = filter;
-                              });
-                              // TODO: Apply filter to transactions
-                            },
                           ),
-                        );
-                      },
+                      ],
                     ),
+                    onPressed: () async {
+                      await HapticService.lightImpact(ref);
+                      if (!mounted) return;
+                      
+                      showCupertinoModalPopup<void>(
+                        context: context,
+                        builder: (BuildContext context) => FilterScreen(
+                          initialFilter: _filter,
+                          onApply: (filter) {
+                            setState(() {
+                              _filter = filter;
+                            });
+                            // TODO: Apply filter to transactions
+                          },
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),
@@ -164,31 +164,14 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             const SizedBox(height: 8),
             // Transactions List
             Expanded(
-              child: ListView(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    child: Text(
-                      'Today',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w600,
-                        color: isDarkMode ? CupertinoColors.white : CupertinoColors.black,
-                      ),
-                    ),
-                  ),
-                  TransactionListItem(
-                    title: 'Shopping',
-                    description: 'Buy some grocery',
-                    amount: -120,
-                    time: '10:00 AM',
-                    icon: CupertinoIcons.shopping_cart,
-                    iconBackgroundColor: CupertinoColors.systemOrange,
-                    isDarkMode: isDarkMode,
-                    currencyCode: settings.currency,
-                  ),
-                  // Add more transactions as needed
-                ],
+              child: ListView.builder(
+                itemCount: transactions.length,
+                itemBuilder: (context, index) {
+                  final transaction = transactions[index];
+                  return TransactionListItem(
+                    transaction: transaction,
+                  );
+                },
               ),
             ),
           ],

@@ -3,13 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/providers/theme_provider.dart';
 import '../../../core/services/haptic_service.dart';
-
-enum RepeatFrequency {
-  daily,
-  weekly,
-  monthly,
-  yearly,
-}
+import '../models/repeat_frequency.dart';
 
 class RepeatDialog extends ConsumerStatefulWidget {
   final RepeatFrequency frequency;

@@ -86,30 +86,41 @@ class CategoriesScreen extends ConsumerWidget {
     bool isDarkMode,
     WidgetRef ref,
   ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Text(
-            title,
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-              color: isDarkMode ? CupertinoColors.white : CupertinoColors.black,
+    return Builder(
+      builder: (context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Text(
+              title,
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: isDarkMode ? CupertinoColors.white : CupertinoColors.black,
+              ),
             ),
           ),
-        ),
-        ...categories.map((category) => _buildCategoryTile(category, isDarkMode, ref)),
-      ],
+          ...categories.map((category) => _buildCategoryTile(context, category, isDarkMode, ref)),
+        ],
+      ),
     );
   }
 
-  Widget _buildCategoryTile(Category category, bool isDarkMode, WidgetRef ref) {
+  Widget _buildCategoryTile(BuildContext context, Category category, bool isDarkMode, WidgetRef ref) {
     return CupertinoButton(
       padding: EdgeInsets.zero,
       onPressed: () {
-        // TODO: Navigate to edit category screen
+        if (filterType != null) {
+          Navigator.pop(context, category);
+        } else {
+          Navigator.push(
+            context,
+            CupertinoPageRoute(
+              builder: (context) => AddCategoryScreen(category: category),
+            ),
+          );
+        }
       },
       child: Container(
         padding: const EdgeInsets.all(16),
