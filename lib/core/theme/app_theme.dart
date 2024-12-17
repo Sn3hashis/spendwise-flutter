@@ -11,6 +11,11 @@ class AppTheme {
   static const Color backgroundDark = CupertinoColors.black;
   static const Color textDark = CupertinoColors.white;
 
+  static const Color bottomNavBarLight = CupertinoColors.white;
+  static const Color bottomNavBarDark = Color(0xFF1C1C1E);
+  static const Color bottomNavBarBorderLight = Color(0xFFE5E5EA);
+  static const Color bottomNavBarBorderDark = Color(0xFF38383A);
+
   static CupertinoThemeData getLightTheme() {
     return const CupertinoThemeData(
       brightness: Brightness.light,

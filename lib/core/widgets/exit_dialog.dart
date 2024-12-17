@@ -5,7 +5,7 @@ class ExitDialog {
     return showCupertinoDialog<bool>(
       context: context,
       builder: (context) => Center(
-        child: Container(
+        child: SizedBox(
           width: MediaQuery.of(context).size.width * 0.85,
           child: CupertinoAlertDialog(
             title: Padding(

@@ -1,10 +1,84 @@
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
 import '../../../core/widgets/system_ui_wrapper.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:intl/intl.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  late DateTime selectedMonth;
+  final List<String> months = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    selectedMonth = DateTime.now();
+  }
+
+  String _getMonthName(DateTime date) {
+    return months[date.month - 1];
+  }
+
+  void _showMonthPicker() {
+    final currentYear = DateTime.now().year;
+    final currentMonth = DateTime.now().month;
+
+    showCupertinoModalPopup(
+      context: context,
+      builder: (BuildContext context) {
+        return Container(
+          height: 220,
+          color: CupertinoColors.systemBackground.resolveFrom(context),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Expanded(
+                child: CupertinoPicker(
+                  itemExtent: 40,
+                  scrollController: FixedExtentScrollController(
+                    initialItem: selectedMonth.month - 1,
+                  ),
+                  onSelectedItemChanged: (int index) {
+                    if (index + 1 <= currentMonth) {
+                      setState(() {
+                        selectedMonth = DateTime(currentYear, index + 1);
+                      });
+                    }
+                  },
+                  children: List<Widget>.generate(12, (int index) {
+                    final isDisabled = index + 1 > currentMonth;
+                    return Center(
+                      child: Text(
+                        months[index],
+                        style: TextStyle(
+                          color: isDisabled 
+                              ? CupertinoColors.systemGrey.withOpacity(0.5)
+                              : CupertinoColors.label.resolveFrom(context),
+                          fontSize: 16,
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+              ),
+              CupertinoButton(
+                child: const Text('Done'),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -18,7 +92,12 @@ class HomeScreen extends StatelessWidget {
             isDarkMode ? CupertinoColors.black : CupertinoColors.white,
         child: SafeArea(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.only(
+              left: 16,
+              right: 16,
+              top: 16,
+              bottom: 100,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -49,9 +128,10 @@ class HomeScreen extends StatelessWidget {
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
-                              'October',
+                              _getMonthName(selectedMonth),
                               style: TextStyle(
                                 color: isDarkMode
                                     ? CupertinoColors.white
@@ -67,9 +147,7 @@ class HomeScreen extends StatelessWidget {
                           ],
                         ),
                       ),
-                      onPressed: () {
-                        // Show month picker
-                      },
+                      onPressed: _showMonthPicker,
                     ),
                     const Icon(CupertinoIcons.bell_fill),
                   ],

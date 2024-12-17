@@ -1,9 +1,10 @@
 import 'package:flutter/cupertino.dart';
-import 'package:curved_navigation_bar/curved_navigation_bar.dart';
+import 'package:flutter/material.dart';
 import '../../home/screens/home_screen.dart';
 import '../../transactions/screens/transactions_screen.dart';
 import '../../budget/screens/budget_screen.dart';
 import '../../profile/screens/profile_screen.dart';
+import '../../../core/theme/app_theme.dart';
 
 class MainLayoutScreen extends StatefulWidget {
   const MainLayoutScreen({super.key});
@@ -14,7 +15,7 @@ class MainLayoutScreen extends StatefulWidget {
 
 class _MainLayoutScreenState extends State<MainLayoutScreen>
     with SingleTickerProviderStateMixin {
-  late int selectedIndex;
+  late int _currentIndex;
   late PageController _pageController;
   late AnimationController _animationController;
   late Animation<double> _animation;
@@ -30,16 +31,14 @@ class _MainLayoutScreenState extends State<MainLayoutScreen>
   @override
   void initState() {
     super.initState();
-    selectedIndex = 0;
-    _pageController = PageController(initialPage: selectedIndex);
+    _currentIndex = 0;
+    _pageController = PageController(initialPage: _currentIndex);
 
-    // Initialize animation controller
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 300),
       vsync: this,
     );
-    _animation =
-        Tween<double>(begin: 0, end: 0.5).animate(_animationController);
+    _animation = Tween<double>(begin: 0, end: 0.5).animate(_animationController);
   }
 
   void onItemTapped(int index) {
@@ -48,19 +47,14 @@ class _MainLayoutScreenState extends State<MainLayoutScreen>
       return;
     }
     setState(() {
-      selectedIndex = index;
+      _currentIndex = index;
       final pageIndex = index > 2 ? index - 1 : index;
-      _pageController.animateToPage(
-        pageIndex,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      );
+      _pageController.jumpToPage(pageIndex);
     });
   }
 
   void _showAddTransactionMenu() {
-    _animationController.forward(); // Start rotation animation
-    // Show the action sheet
+    _animationController.forward();
     showCupertinoModalPopup(
       context: context,
       builder: (context) => CupertinoActionSheet(
@@ -124,115 +118,138 @@ class _MainLayoutScreenState extends State<MainLayoutScreen>
         ),
       ),
     ).whenComplete(() {
-      _animationController.reverse(); // Reset rotation animation
+      _animationController.reverse();
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = MediaQuery.platformBrightnessOf(context) == Brightness.dark;
+    
     return CupertinoPageScaffold(
-      backgroundColor: CupertinoColors.black,
       child: Stack(
         children: [
           PageView(
-            physics: const NeverScrollableScrollPhysics(),
             controller: _pageController,
-            children: const [
-              HomeScreen(),
-              TransactionsScreen(),
-              BudgetScreen(),
-              ProfileScreen(),
+            physics: const NeverScrollableScrollPhysics(),
+            onPageChanged: (index) {
+              setState(() {
+                _currentIndex = index > 1 ? index + 1 : index;
+              });
+            },
+            children: [
+              const HomeScreen(),
+              const TransactionsScreen(),
+              const BudgetScreen(),
+              const ProfileScreen(),
             ],
           ),
+          
           Positioned(
-            bottom: 0,
             left: 0,
             right: 0,
-            child: Stack(
-              alignment: Alignment.topCenter,
-              children: [
-                // Bottom Navigation Bar
-                Container(
-                  height: 60,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF1C1C1E),
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(30),
-                      topRight: Radius.circular(30),
-                    ),
+            bottom: 0,
+            child: Container(
+              margin: const EdgeInsets.all(16),
+              height: 65,
+              decoration: BoxDecoration(
+                color: isDarkMode ? AppTheme.bottomNavBarDark : AppTheme.bottomNavBarLight,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: isDarkMode 
+                      ? AppTheme.bottomNavBarBorderDark 
+                      : AppTheme.bottomNavBarBorderLight,
+                  width: 0.5,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: isDarkMode 
+                        ? Colors.black.withOpacity(0.3)
+                        : Colors.grey.withOpacity(0.1),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: List.generate(navItems.length, (index) {
-                      final isSelected = selectedIndex == index;
-                      final item = navItems[index];
-
-                      if (index == 2) {
-                        // Empty space for center button
-                        return const SizedBox(width: 50);
-                      }
-
-                      return CupertinoButton(
-                        padding: EdgeInsets.zero,
-                        onPressed: () => onItemTapped(index),
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 200),
-                          child: isSelected
-                              ? Text(
-                                  item.label,
-                                  key: ValueKey('text_$index'),
-                                  style: const TextStyle(
-                                    color: CupertinoColors.activeBlue,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                )
-                              : Icon(
-                                  item.icon,
-                                  key: ValueKey('icon_$index'),
-                                  color: const Color(0xFF8E8E93),
-                                  size: 24,
-                                ),
-                        ),
-                      );
-                    }),
+                ],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildNavItem(0, navItems[0].icon, navItems[0].label),
+                  _buildNavItem(1, navItems[1].icon, navItems[1].label),
+                  const SizedBox(width: 56),
+                  _buildNavItem(3, navItems[3].icon, navItems[3].label),
+                  _buildNavItem(4, navItems[4].icon, navItems[4].label),
+                ],
+              ),
+            ),
+          ),
+          
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 44,
+            child: Center(
+              child: Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: CupertinoColors.activeBlue.withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: RawMaterialButton(
+                  onPressed: () => _showAddTransactionMenu(),
+                  elevation: 0,
+                  fillColor: CupertinoColors.activeBlue,
+                  shape: const CircleBorder(),
+                  child: const Icon(
+                    CupertinoIcons.add,
+                    color: CupertinoColors.white,
+                    size: 28,
                   ),
                 ),
-                // Floating Add Button
-                Positioned(
-                  top: -25,
-                  child: RotationTransition(
-                    turns: _animation,
-                    child: GestureDetector(
-                      onTap: () => _showAddTransactionMenu(),
-                      child: Container(
-                        width: 56,
-                        height: 56,
-                        decoration: BoxDecoration(
-                          color: CupertinoColors.activeBlue,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color:
-                                  CupertinoColors.activeBlue.withOpacity(0.3),
-                              blurRadius: 8,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: const Icon(
-                          CupertinoIcons.add,
-                          color: CupertinoColors.white,
-                          size: 32,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildNavItem(int index, IconData icon, String label) {
+    final bool isSelected = _currentIndex == index;
+    return GestureDetector(
+      onTap: () => onItemTapped(index),
+      behavior: HitTestBehavior.opaque,
+      child: SizedBox(
+        height: 65,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              color: isSelected 
+                  ? CupertinoColors.systemBlue 
+                  : CupertinoColors.systemGrey,
+              size: 24,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                color: isSelected 
+                    ? CupertinoColors.systemBlue 
+                    : CupertinoColors.systemGrey,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

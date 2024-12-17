@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import '../../../core/widgets/system_ui_wrapper.dart';
 import 'pin_entry_screen.dart';
