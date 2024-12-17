@@ -1,0 +1,255 @@
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/providers/theme_provider.dart';
+import '../../../core/services/haptic_service.dart';
+import '../models/category_model.dart';
+import '../providers/categories_provider.dart';
+
+class AddCategoryScreen extends ConsumerStatefulWidget {
+  final Category? category;
+
+  const AddCategoryScreen({
+    super.key,
+    this.category,
+  });
+
+  @override
+  ConsumerState<AddCategoryScreen> createState() => _AddCategoryScreenState();
+}
+
+class _AddCategoryScreenState extends ConsumerState<AddCategoryScreen> {
+  late TextEditingController _nameController;
+  late TextEditingController _descriptionController;
+  late CategoryType _selectedType;
+  late IconData _selectedIcon;
+  late Color _selectedColor;
+
+  final List<IconData> _icons = [
+    CupertinoIcons.money_dollar,
+    CupertinoIcons.cart,
+    CupertinoIcons.shopping_cart,
+    CupertinoIcons.car_detailed,
+    CupertinoIcons.house,
+    CupertinoIcons.gift,
+    CupertinoIcons.game_controller,
+    CupertinoIcons.heart,
+    CupertinoIcons.book,
+    CupertinoIcons.bus,
+    CupertinoIcons.airplane,
+    CupertinoIcons.paw,
+  ];
+
+  final List<Color> _colors = [
+    CupertinoColors.systemRed,
+    CupertinoColors.systemOrange,
+    CupertinoColors.systemYellow,
+    CupertinoColors.systemGreen,
+    CupertinoColors.systemBlue,
+    CupertinoColors.systemPurple,
+    CupertinoColors.systemPink,
+    CupertinoColors.systemTeal,
+    CupertinoColors.systemIndigo,
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.category?.name);
+    _descriptionController = TextEditingController(text: widget.category?.description);
+    _selectedType = widget.category?.type ?? CategoryType.expense;
+    _selectedIcon = widget.category?.icon ?? _icons.first;
+    _selectedColor = widget.category?.color ?? _colors.first;
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _descriptionController.dispose();
+    super.dispose();
+  }
+
+  void _saveCategory() {
+    if (_nameController.text.isEmpty) return;
+
+    final category = Category(
+      id: widget.category?.id ?? DateTime.now().toString(),
+      name: _nameController.text,
+      description: _descriptionController.text,
+      icon: _selectedIcon,
+      color: _selectedColor,
+      type: _selectedType,
+      isCustom: true,
+    );
+
+    if (widget.category != null) {
+      ref.read(categoriesProvider.notifier).updateCategory(category);
+    } else {
+      ref.read(categoriesProvider.notifier).addCategory(category);
+    }
+
+    Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDarkMode = ref.watch(themeProvider);
+
+    return CupertinoPageScaffold(
+      backgroundColor: isDarkMode ? AppTheme.backgroundDark : AppTheme.backgroundLight,
+      navigationBar: CupertinoNavigationBar(
+        backgroundColor: isDarkMode ? AppTheme.backgroundDark : AppTheme.backgroundLight,
+        middle: Text(widget.category != null ? 'Edit Category' : 'Add Category'),
+        trailing: CupertinoButton(
+          padding: EdgeInsets.zero,
+          child: const Text('Save'),
+          onPressed: _saveCategory,
+        ),
+      ),
+      child: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            // Type Selector
+            Text(
+              'Type',
+              style: TextStyle(
+                fontSize: 17,
+                color: isDarkMode ? CupertinoColors.white : CupertinoColors.black,
+              ),
+            ),
+            const SizedBox(height: 8),
+            CupertinoSlidingSegmentedControl<CategoryType>(
+              groupValue: _selectedType,
+              children: const {
+                CategoryType.expense: Text('Expense'),
+                CategoryType.income: Text('Income'),
+              },
+              onValueChanged: (value) {
+                if (value != null) {
+                  setState(() => _selectedType = value);
+                }
+              },
+            ),
+            const SizedBox(height: 24),
+
+            // Name Input
+            CupertinoTextField(
+              controller: _nameController,
+              placeholder: 'Category Name',
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: isDarkMode ? AppTheme.cardDark : AppTheme.cardLight,
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Description Input
+            CupertinoTextField(
+              controller: _descriptionController,
+              placeholder: 'Description',
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: isDarkMode ? AppTheme.cardDark : AppTheme.cardLight,
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Icon Selector
+            Text(
+              'Icon',
+              style: TextStyle(
+                fontSize: 17,
+                color: isDarkMode ? CupertinoColors.white : CupertinoColors.black,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: isDarkMode ? AppTheme.cardDark : AppTheme.cardLight,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Wrap(
+                spacing: 16,
+                runSpacing: 16,
+                children: _icons.map((icon) {
+                  final isSelected = _selectedIcon == icon;
+                  return GestureDetector(
+                    onTap: () async {
+                      await HapticService.lightImpact(ref);
+                      setState(() => _selectedIcon = icon);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isSelected ? _selectedColor.withOpacity(0.2) : null,
+                        border: Border.all(
+                          color: isSelected ? _selectedColor : Colors.transparent,
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        icon,
+                        color: isSelected ? _selectedColor : (isDarkMode ? CupertinoColors.white : CupertinoColors.black),
+                        size: 24,
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Color Selector
+            Text(
+              'Color',
+              style: TextStyle(
+                fontSize: 17,
+                color: isDarkMode ? CupertinoColors.white : CupertinoColors.black,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: isDarkMode ? AppTheme.cardDark : AppTheme.cardLight,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Wrap(
+                spacing: 16,
+                runSpacing: 16,
+                children: _colors.map((color) {
+                  final isSelected = _selectedColor == color;
+                  return GestureDetector(
+                    onTap: () async {
+                      await HapticService.lightImpact(ref);
+                      setState(() => _selectedColor = color);
+                    },
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: color,
+                        shape: BoxShape.circle,
+                        border: isSelected
+                            ? Border.all(
+                                color: isDarkMode ? CupertinoColors.white : CupertinoColors.black,
+                                width: 2,
+                              )
+                            : null,
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+} 

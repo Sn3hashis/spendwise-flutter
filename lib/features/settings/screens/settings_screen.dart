@@ -11,6 +11,7 @@ import 'notification_selector_screen.dart';
 import '../providers/settings_provider.dart';
 import '../../../core/providers/theme_provider.dart';
 import '../../../core/widgets/system_ui_wrapper.dart';
+import '../../categories/screens/categories_screen.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -218,6 +219,7 @@ class SettingsScreen extends ConsumerWidget {
                               isDarkMode: isDarkMode,
                               onTap: () {},
                             ),
+                            
                           ],
                         ),
                       ),

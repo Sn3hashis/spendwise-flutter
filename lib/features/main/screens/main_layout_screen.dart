@@ -3,8 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../home/screens/home_screen.dart';
 import '../../transactions/screens/transactions_screen.dart';
+import '../../transactions/screens/expense_screen.dart';
+import '../../transactions/screens/transfer_screen.dart';
 import '../../budget/screens/budget_screen.dart';
 import '../../profile/screens/profile_screen.dart';
+import '../../transactions/screens/income_screen.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/providers/theme_provider.dart';
 import 'package:flutter/services.dart';
@@ -58,70 +61,121 @@ class _MainLayoutScreenState extends ConsumerState<MainLayoutScreen>
     });
   }
 
-  void _showAddTransactionMenu() {
-    _animationController.forward();
+  void _showAddTransactionMenu() async {
+    await HapticService.lightImpact(ref);
+    if (!mounted) return;
+
     showCupertinoModalPopup(
       context: context,
-      builder: (context) => CupertinoActionSheet(
-        actions: [
-          CupertinoActionSheetAction(
-            onPressed: () {
-              Navigator.pop(context);
-              // Handle Income
-            },
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  CupertinoIcons.arrow_down_circle_fill,
-                  color: CupertinoColors.systemGreen,
-                ),
-                const SizedBox(width: 8),
-                const Text('Income'),
-              ],
+      builder: (BuildContext context) {
+        final isDarkMode = ref.watch(themeProvider);
+        
+        return CupertinoActionSheet(
+          actions: [
+            CupertinoActionSheetAction(
+              onPressed: () async {
+                await HapticService.lightImpact(ref);
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  CupertinoPageRoute(
+                    builder: (context) => const IncomeScreen(),
+                  ),
+                );
+              },
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    CupertinoIcons.arrow_down_circle_fill,
+                    color: const Color(0xFF00C853),
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Income',
+                    style: TextStyle(
+                      color: Color(0xFF00C853),
+                      fontSize: 17,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          CupertinoActionSheetAction(
-            onPressed: () {
-              Navigator.pop(context);
-              // Handle Expense
-            },
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  CupertinoIcons.arrow_up_circle_fill,
-                  color: CupertinoColors.systemRed,
-                ),
-                const SizedBox(width: 8),
-                const Text('Expense'),
-              ],
+            CupertinoActionSheetAction(
+              onPressed: () async {
+                await HapticService.lightImpact(ref);
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  CupertinoPageRoute(
+                    builder: (context) => const ExpenseScreen(),
+                  ),
+                );
+              },
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    CupertinoIcons.arrow_up_circle_fill,
+                    color: const Color(0xFFFF3B30),
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Expense',
+                    style: TextStyle(
+                      color: Color(0xFFFF3B30),
+                      fontSize: 17,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          CupertinoActionSheetAction(
-            onPressed: () {
-              Navigator.pop(context);
-              // Handle Transfer
-            },
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  CupertinoIcons.arrow_right_arrow_left_circle_fill,
-                  color: CupertinoColors.activeBlue,
-                ),
-                const SizedBox(width: 8),
-                const Text('Transfer'),
-              ],
+            CupertinoActionSheetAction(
+              onPressed: () async {
+                await HapticService.lightImpact(ref);
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  CupertinoPageRoute(
+                    builder: (context) => const TransferScreen(),
+                  ),
+                );
+              },
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    CupertinoIcons.arrow_right_arrow_left_circle_fill,
+                    color: const Color(0xFF007AFF),
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Transfer',
+                    style: TextStyle(
+                      color: Color(0xFF007AFF),
+                      fontSize: 17,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
             ),
+          ],
+          cancelButton: CupertinoActionSheetAction(
+            onPressed: () async {
+              await HapticService.lightImpact(ref);
+              Navigator.pop(context);
+            },
+            isDestructiveAction: true,
+            child: const Text('Cancel'),
           ),
-        ],
-        cancelButton: CupertinoActionSheetAction(
-          onPressed: () => Navigator.pop(context),
-          isDestructiveAction: true,
-          child: const Text('Cancel'),
-        ),
-      ),
+        );
+      },
     ).whenComplete(() {
       _animationController.reverse();
     });
@@ -179,7 +233,7 @@ class _MainLayoutScreenState extends ConsumerState<MainLayoutScreen>
                 physics: const NeverScrollableScrollPhysics(),
                 onPageChanged: (index) {
                   setState(() {
-                    _currentIndex = index > 1 ? index + 1 : index;
+                    _currentIndex = index >= 2 ? index + 1 : index;
                   });
                 },
                 children: const [
@@ -263,16 +317,25 @@ class _MainLayoutScreenState extends ConsumerState<MainLayoutScreen>
                       ],
                     ),
                     child: HapticFeedbackWrapper(
-                      onPressed: () => _showAddTransactionMenu(),
+                      onPressed: () {
+                        _animationController.forward();
+                        _showAddTransactionMenu();
+                      },
                       child: RawMaterialButton(
-                        onPressed: () => _showAddTransactionMenu(),
+                        onPressed: () {
+                          _animationController.forward();
+                          _showAddTransactionMenu();
+                        },
                         elevation: 0,
                         fillColor: CupertinoColors.activeBlue,
                         shape: const CircleBorder(),
-                        child: const Icon(
-                          CupertinoIcons.add,
-                          color: CupertinoColors.white,
-                          size: 28,
+                        child: RotationTransition(
+                          turns: _animation,
+                          child: const Icon(
+                            CupertinoIcons.add,
+                            color: CupertinoColors.white,
+                            size: 28,
+                          ),
                         ),
                       ),
                     ),
