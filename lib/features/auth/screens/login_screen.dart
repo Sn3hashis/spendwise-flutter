@@ -9,6 +9,8 @@ import 'forgot_password_screen.dart';
 import 'pin_entry_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/theme_provider.dart';
+import '../../../core/widgets/haptic_feedback_wrapper.dart';
+import '../../../core/services/haptic_service.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -29,7 +31,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.dispose();
   }
 
-  void _onLogin() {
+  void _onLogin() async {
+    await HapticService.lightImpact(ref);
     Navigator.of(context).pushReplacement(
       CupertinoPageRoute(
         builder: (context) => const PinEntryScreen(mode: PinEntryMode.setup),
@@ -137,10 +140,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                       color: CupertinoColors.systemGrey,
                                     ),
                                     suffix: GestureDetector(
-                                      onTap: () => setState(() {
-                                        _isPasswordVisible =
-                                            !_isPasswordVisible;
-                                      }),
+                                      onTap: () async {
+                                        await HapticService.lightImpact(ref);
+                                        setState(() {
+                                          _isPasswordVisible =
+                                              !_isPasswordVisible;
+                                        });
+                                      },
                                       child: Icon(
                                         _isPasswordVisible
                                             ? CupertinoIcons.eye_slash
@@ -165,9 +171,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   mainAxisAlignment: MainAxisAlignment.end,
                                   children: [
                                     CupertinoButton(
-                                      padding:
-                                          EdgeInsets.symmetric(horizontal: 5),
-                                      onPressed: () {
+                                      padding: EdgeInsets.symmetric(horizontal: 5),
+                                      onPressed: () async {
+                                        await HapticService.lightImpact(ref);
                                         Navigator.of(context).push(
                                           CupertinoPageRoute(
                                             builder: (context) =>
@@ -185,16 +191,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   ],
                                 ),
                                 const SizedBox(height: 24),
-                                CupertinoButton.filled(
+                                HapticFeedbackWrapper(
                                   onPressed: _onLogin,
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: const Padding(
-                                    padding: EdgeInsets.symmetric(vertical: 4),
-                                    child: Text(
-                                      'LOGIN',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
+                                  child: CupertinoButton.filled(
+                                    onPressed: _onLogin,
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: const Padding(
+                                      padding: EdgeInsets.symmetric(vertical: 4),
+                                      child: Text(
+                                        'LOGIN',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -226,9 +235,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   ],
                                 ),
                                 const SizedBox(height: 24),
-                                CupertinoButton(
-                                  onPressed: () {
-                                    // Add Google sign in logic
+                                HapticFeedbackWrapper(
+                                  onPressed: () async {
+                                    await HapticService.lightImpact(ref);
                                     Navigator.of(context).pushReplacement(
                                       CupertinoPageRoute(
                                         builder: (context) =>
@@ -237,33 +246,45 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                       ),
                                     );
                                   },
-                                  color: isDarkMode
-                                      ? CupertinoColors.black
-                                      : CupertinoColors.white,
-                                  borderRadius: BorderRadius.circular(12),
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 12),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      SvgPicture.asset(
-                                        'assets/images/google_logo.svg',
-                                        height: 24,
-                                        width: 24,
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Text(
-                                        'Sign in with Google',
-                                        style: TextStyle(
-                                          color: isDarkMode
-                                              ? CupertinoColors.white
-                                              : CupertinoColors.black,
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w600,
+                                  child: CupertinoButton(
+                                    onPressed: () async {
+                                      await HapticService.lightImpact(ref);
+                                      Navigator.of(context).pushReplacement(
+                                        CupertinoPageRoute(
+                                          builder: (context) =>
+                                              const PinEntryScreen(
+                                                  mode: PinEntryMode.setup),
                                         ),
-                                      ),
-                                    ],
+                                      );
+                                    },
+                                    color: isDarkMode
+                                        ? CupertinoColors.black
+                                        : CupertinoColors.white,
+                                    borderRadius: BorderRadius.circular(12),
+                                    padding:
+                                        const EdgeInsets.symmetric(vertical: 12),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        SvgPicture.asset(
+                                          'assets/images/google_logo.svg',
+                                          height: 24,
+                                          width: 24,
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Text(
+                                          'Sign in with Google',
+                                          style: TextStyle(
+                                            color: isDarkMode
+                                                ? CupertinoColors.white
+                                                : CupertinoColors.black,
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                                 const SizedBox(height: 24),
@@ -277,8 +298,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                         fontSize: 14,
                                       ),
                                     ),
-                                    CupertinoButton(
-                                      padding: EdgeInsets.zero,
+                                    HapticFeedbackWrapper(
                                       onPressed: () {
                                         Navigator.of(context).push(
                                           CupertinoPageRoute(

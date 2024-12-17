@@ -4,6 +4,7 @@ import '../../../core/theme/app_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/theme_provider.dart';
 import 'package:lottie/lottie.dart';
+import '../../../core/widgets/haptic_feedback_wrapper.dart';
 
 class HapticsSelectorScreen extends ConsumerWidget {
   final String selectedOption;
@@ -56,8 +57,7 @@ class HapticsSelectorScreen extends ConsumerWidget {
                   final isSelected = option == selectedOption;
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 8),
-                    child: CupertinoButton(
-                      padding: EdgeInsets.zero,
+                    child: HapticFeedbackWrapper(
                       onPressed: () {
                         Navigator.pop(context, option);
                       },

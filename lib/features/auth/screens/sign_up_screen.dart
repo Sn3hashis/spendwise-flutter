@@ -7,6 +7,8 @@ import 'package:lottie/lottie.dart';
 import 'otp_verification_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/theme_provider.dart';
+import '../../../core/services/haptic_service.dart';
+import 'pin_entry_screen.dart';
 
 class SignUpScreen extends ConsumerStatefulWidget {
   const SignUpScreen({super.key});
@@ -68,6 +70,15 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
     }
     final shouldPop = await ExitDialog.show(context);
     return shouldPop ?? false;
+  }
+
+  void _onSignUp() async {
+    await HapticService.lightImpact(ref);
+    Navigator.of(context).pushReplacement(
+      CupertinoPageRoute(
+        builder: (context) => const PinEntryScreen(mode: PinEntryMode.setup),
+      ),
+    );
   }
 
   @override
@@ -269,10 +280,13 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                                         color: CupertinoColors.systemGrey,
                                       ),
                                       suffix: GestureDetector(
-                                        onTap: () => setState(() {
-                                          _isPasswordVisible =
-                                              !_isPasswordVisible;
-                                        }),
+                                        onTap: () async {
+                                          await HapticService.lightImpact(ref);
+                                          setState(() {
+                                            _isPasswordVisible =
+                                                !_isPasswordVisible;
+                                          });
+                                        },
                                         child: Icon(
                                           _isPasswordVisible
                                               ? CupertinoIcons.eye_slash
@@ -447,8 +461,16 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                                   ),
                                   const SizedBox(height: 24),
                                   CupertinoButton(
-                                    onPressed: () {
-                                      // Add Google sign up logic
+                                    onPressed: () async {
+                                      await HapticService.lightImpact(ref);
+                                      Navigator.of(context).pushReplacement(
+                                        CupertinoPageRoute(
+                                          builder: (context) =>
+                                              const PinEntryScreen(
+                                            mode: PinEntryMode.setup,
+                                          ),
+                                        ),
+                                      );
                                     },
                                     color: isDarkMode
                                         ? CupertinoColors.black
@@ -493,10 +515,12 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                                       ),
                                       CupertinoButton(
                                         padding: EdgeInsets.zero,
-                                        onPressed: () =>
-                                            Navigator.of(context).pop(),
+                                        onPressed: () async {
+                                          await HapticService.lightImpact(ref);
+                                          Navigator.pop(context);
+                                        },
                                         child: const Text(
-                                          'Login',
+                                          'Sign In',
                                           style: TextStyle(
                                             fontSize: 14,
                                             fontWeight: FontWeight.w600,

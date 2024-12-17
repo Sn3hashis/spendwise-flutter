@@ -4,6 +4,8 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/theme_provider.dart';
+import '../../../core/widgets/haptic_feedback_wrapper.dart';
+import '../../../core/services/haptic_service.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -37,49 +39,133 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       context: context,
       builder: (BuildContext context) {
         return Container(
-          height: 220,
+          height: 280,
           color: CupertinoColors.systemBackground.resolveFrom(context),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Expanded(
-                child: CupertinoPicker(
-                  itemExtent: 40,
-                  scrollController: FixedExtentScrollController(
-                    initialItem: selectedMonth.month - 1,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  CupertinoButton(
+                    child: const Text('Cancel'),
+                    onPressed: () => Navigator.of(context).pop(),
                   ),
-                  onSelectedItemChanged: (int index) {
-                    if (index + 1 <= currentMonth) {
-                      setState(() {
-                        selectedMonth = DateTime(currentYear, index + 1);
-                      });
-                    }
-                  },
-                  children: List<Widget>.generate(12, (int index) {
-                    final isDisabled = index + 1 > currentMonth;
-                    return Center(
-                      child: Text(
-                        months[index],
-                        style: TextStyle(
-                          color: isDisabled 
-                              ? CupertinoColors.systemGrey.withOpacity(0.5)
-                              : CupertinoColors.label.resolveFrom(context),
-                          fontSize: 16,
+                  CupertinoButton(
+                    child: const Text('Done'),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
+              Expanded(
+                child: Row(
+                  children: [
+                    // Month Picker
+                    Expanded(
+                      child: CupertinoPicker(
+                        itemExtent: 40,
+                        scrollController: FixedExtentScrollController(
+                          initialItem: selectedMonth.month - 1,
+                        ),
+                        onSelectedItemChanged: (int index) async {
+                          // Add haptic feedback
+                          await HapticService.lightImpact(ref);
+                          if (index + 1 <= currentMonth) {
+                            setState(() {
+                              selectedMonth = DateTime(
+                                selectedMonth.year,
+                                index + 1,
+                                selectedMonth.day,
+                              );
+                            });
+                          }
+                        },
+                        children: List<Widget>.generate(12, (int index) {
+                          final isDisabled = selectedMonth.year == currentYear && 
+                                           index + 1 > currentMonth;
+                          return Center(
+                            child: Text(
+                              months[index],
+                              style: TextStyle(
+                                color: isDisabled 
+                                    ? CupertinoColors.systemGrey.withOpacity(0.5)
+                                    : CupertinoColors.label.resolveFrom(context),
+                                fontSize: 16,
+                              ),
+                            ),
+                          );
+                        }),
+                      ),
+                    ),
+                    // Year Picker
+                    Expanded(
+                      child: CupertinoPicker(
+                        itemExtent: 40,
+                        scrollController: FixedExtentScrollController(
+                          initialItem: selectedMonth.year - currentYear + 1,
+                        ),
+                        onSelectedItemChanged: (int index) async {
+                          // Add haptic feedback
+                          await HapticService.lightImpact(ref);
+                          setState(() {
+                            selectedMonth = DateTime(
+                              currentYear - 1 + index,
+                              selectedMonth.month,
+                              selectedMonth.day,
+                            );
+                          });
+                        },
+                        children: List<Widget>.generate(
+                          2, // Show current year and previous year
+                          (int index) {
+                            final year = currentYear - 1 + index;
+                            return Center(
+                              child: Text(
+                                year.toString(),
+                                style: TextStyle(
+                                  color: CupertinoColors.label.resolveFrom(context),
+                                  fontSize: 16,
+                                ),
+                              ),
+                            );
+                          },
                         ),
                       ),
-                    );
-                  }),
+                    ),
+                  ],
                 ),
-              ),
-              CupertinoButton(
-                child: const Text('Done'),
-                onPressed: () => Navigator.of(context).pop(),
               ),
             ],
           ),
         );
       },
     );
+  }
+
+  void _navigateToPreviousMonth() {
+    setState(() {
+      selectedMonth = DateTime(
+        selectedMonth.year,
+        selectedMonth.month - 1,
+        selectedMonth.day,
+      );
+    });
+  }
+
+  void _navigateToNextMonth() {
+    final now = DateTime.now();
+    final nextMonth = DateTime(
+      selectedMonth.year,
+      selectedMonth.month + 1,
+      selectedMonth.day,
+    );
+    
+    // Only allow navigation up to current month
+    if (nextMonth.isBefore(DateTime(now.year, now.month + 1, 1))) {
+      setState(() {
+        selectedMonth = nextMonth;
+      });
+    }
   }
 
   @override
@@ -117,8 +203,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ),
                       child: const Icon(CupertinoIcons.person),
                     ),
-                    CupertinoButton(
-                      padding: EdgeInsets.zero,
+                    HapticFeedbackWrapper(
+                      onPressed: _showMonthPicker,
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 12, vertical: 6),
@@ -148,7 +234,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           ],
                         ),
                       ),
-                      onPressed: _showMonthPicker,
                     ),
                     const Icon(CupertinoIcons.bell_fill),
                   ],

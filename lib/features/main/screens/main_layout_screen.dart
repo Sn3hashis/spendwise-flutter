@@ -8,6 +8,8 @@ import '../../profile/screens/profile_screen.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/providers/theme_provider.dart';
 import 'package:flutter/services.dart';
+import '../../../core/widgets/haptic_feedback_wrapper.dart';
+import '../../../core/services/haptic_service.dart';
 
 class MainLayoutScreen extends ConsumerStatefulWidget {
   const MainLayoutScreen({super.key});
@@ -193,7 +195,7 @@ class _MainLayoutScreenState extends ConsumerState<MainLayoutScreen>
                 right: 0,
                 bottom: 0,
                 child: Container(
-                  margin: const EdgeInsets.all(16),
+                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                   height: 65,
                   decoration: BoxDecoration(
                     color: isDarkMode ? AppTheme.bottomNavBarDark : AppTheme.bottomNavBarLight,
@@ -214,15 +216,30 @@ class _MainLayoutScreenState extends ConsumerState<MainLayoutScreen>
                       ),
                     ],
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _buildNavItem(0, navItems[0].icon, navItems[0].label),
-                      _buildNavItem(1, navItems[1].icon, navItems[1].label),
-                      const SizedBox(width: 56),
-                      _buildNavItem(3, navItems[3].icon, navItems[3].label),
-                      _buildNavItem(4, navItems[4].icon, navItems[4].label),
-                    ],
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        HapticFeedbackWrapper(
+                          onPressed: () => onItemTapped(0),
+                          child: _buildNavItem(0, navItems[0].icon, navItems[0].label),
+                        ),
+                        HapticFeedbackWrapper(
+                          onPressed: () => onItemTapped(1),
+                          child: _buildNavItem(1, navItems[1].icon, navItems[1].label),
+                        ),
+                        SizedBox(width: 40),
+                        HapticFeedbackWrapper(
+                          onPressed: () => onItemTapped(3),
+                          child: _buildNavItem(3, navItems[3].icon, navItems[3].label),
+                        ),
+                        HapticFeedbackWrapper(
+                          onPressed: () => onItemTapped(4),
+                          child: _buildNavItem(4, navItems[4].icon, navItems[4].label),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -245,15 +262,18 @@ class _MainLayoutScreenState extends ConsumerState<MainLayoutScreen>
                         ),
                       ],
                     ),
-                    child: RawMaterialButton(
+                    child: HapticFeedbackWrapper(
                       onPressed: () => _showAddTransactionMenu(),
-                      elevation: 0,
-                      fillColor: CupertinoColors.activeBlue,
-                      shape: const CircleBorder(),
-                      child: const Icon(
-                        CupertinoIcons.add,
-                        color: CupertinoColors.white,
-                        size: 28,
+                      child: RawMaterialButton(
+                        onPressed: () => _showAddTransactionMenu(),
+                        elevation: 0,
+                        fillColor: CupertinoColors.activeBlue,
+                        shape: const CircleBorder(),
+                        child: const Icon(
+                          CupertinoIcons.add,
+                          color: CupertinoColors.white,
+                          size: 28,
+                        ),
                       ),
                     ),
                   ),
@@ -268,33 +288,33 @@ class _MainLayoutScreenState extends ConsumerState<MainLayoutScreen>
 
   Widget _buildNavItem(int index, IconData icon, String label) {
     final bool isSelected = _currentIndex == index;
-    return GestureDetector(
-      onTap: () => onItemTapped(index),
-      behavior: HitTestBehavior.opaque,
-      child: SizedBox(
-        height: 65,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
+    return SizedBox(
+      height: 65,
+      width: 65,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            icon,
+            color: isSelected 
+                ? CupertinoColors.systemBlue 
+                : CupertinoColors.systemGrey,
+            size: 24,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
               color: isSelected 
                   ? CupertinoColors.systemBlue 
                   : CupertinoColors.systemGrey,
-              size: 24,
             ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                color: isSelected 
-                    ? CupertinoColors.systemBlue 
-                    : CupertinoColors.systemGrey,
-              ),
-            ),
-          ],
-        ),
+            maxLines: 1,
+            overflow: TextOverflow.visible,
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }

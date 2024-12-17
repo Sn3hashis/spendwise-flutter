@@ -3,6 +3,7 @@ import 'package:lottie/lottie.dart';
 import '../../../core/theme/app_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/theme_provider.dart';
+import '../../../core/widgets/haptic_feedback_wrapper.dart';
 
 class LanguageSelectorScreen extends ConsumerWidget {
   final String selectedLanguage;
@@ -78,8 +79,7 @@ class LanguageSelectorScreen extends ConsumerWidget {
                       itemBuilder: (context, index) {
                         final (flag, language, country) = languages[index];
                         final isSelected = language == selectedLanguage;
-                        return CupertinoButton(
-                          padding: EdgeInsets.zero,
+                        return HapticFeedbackWrapper(
                           onPressed: () {
                             Navigator.pop(context, language);
                           },

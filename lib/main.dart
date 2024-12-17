@@ -7,15 +7,19 @@ import 'features/settings/providers/settings_provider.dart';
 import 'core/utils/system_ui_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'core/providers/theme_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final prefs = await SharedPreferences.getInstance();
+  
+  // Initialize SharedPreferences
+  final sharedPreferences = await SharedPreferences.getInstance();
   
   runApp(
     ProviderScope(
       overrides: [
-        sharedPreferencesProvider.overrideWithValue(prefs),
+        // Override the sharedPreferencesProvider with the instance
+        sharedPreferencesProvider.overrideWithValue(sharedPreferences),
       ],
       child: const MyApp(),
     ),
@@ -46,19 +50,14 @@ class _MyAppState extends ConsumerState<MyApp> with WidgetsBindingObserver {
 
   @override
   void didChangePlatformBrightness() {
-    setState(() {}); // Rebuild on system theme change
+    final brightness = WidgetsBinding.instance.platformDispatcher.platformBrightness;
+    ref.read(platformBrightnessProvider.notifier).state = brightness;
   }
 
   @override
   Widget build(BuildContext context) {
-    final settings = ref.watch(settingsProvider);
+    final isDarkMode = ref.watch(themeProvider);
     
-    final isDarkMode = switch (settings.theme) {
-      'Dark' => true,
-      'Light' => false,
-      _ => MediaQuery.platformBrightnessOf(context) == Brightness.dark,
-    };
-
     SystemUIHelper.setSystemUIOverlayStyle(isDarkMode: isDarkMode);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
@@ -75,6 +74,14 @@ class _MyAppState extends ConsumerState<MyApp> with WidgetsBindingObserver {
         theme: isDarkMode ? AppTheme.getDarkTheme() : AppTheme.getLightTheme(),
         home: const OnboardingScreen(),
         builder: (context, child) {
+          // Get the current platform brightness
+          final platformBrightness = MediaQuery.platformBrightnessOf(context);
+          
+          // Update the platform brightness provider
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            ref.read(platformBrightnessProvider.notifier).state = platformBrightness;
+          });
+          
           return CupertinoTheme(
             data: isDarkMode ? AppTheme.getDarkTheme() : AppTheme.getLightTheme(),
             child: child ?? const SizedBox.shrink(),

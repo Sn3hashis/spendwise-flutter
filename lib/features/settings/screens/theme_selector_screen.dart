@@ -5,6 +5,7 @@ import '../../../core/providers/theme_provider.dart';
 import '../../../features/settings/providers/settings_provider.dart';
 import 'package:lottie/lottie.dart';
 import 'package:flutter/material.dart' show Theme, ThemeData;
+import '../../../core/widgets/haptic_feedback_wrapper.dart';
 
 class ThemeSelector extends ConsumerWidget {
   final String selectedTheme;
@@ -58,13 +59,9 @@ class ThemeSelector extends ConsumerWidget {
                   final isSelected = theme == selectedTheme;
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 8),
-                    child: CupertinoButton(
-                      padding: EdgeInsets.zero,
-                      onPressed: () async {
-                        await ref.read(settingsProvider.notifier).updateTheme(theme);
-                        if (context.mounted) {
-                          Navigator.pop(context, theme);
-                        }
+                    child: HapticFeedbackWrapper(
+                      onPressed: () {
+                        Navigator.pop(context, theme);
                       },
                       child: Container(
                         padding: const EdgeInsets.all(16),

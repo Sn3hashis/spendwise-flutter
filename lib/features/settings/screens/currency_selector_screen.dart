@@ -4,6 +4,7 @@ import 'package:lottie/lottie.dart';
 import '../../../core/theme/app_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/theme_provider.dart';
+import '../../../core/widgets/haptic_feedback_wrapper.dart';
 
 class CurrencySelectorScreen extends ConsumerWidget {
   final String selectedCurrency;
@@ -87,8 +88,7 @@ class CurrencySelectorScreen extends ConsumerWidget {
                       itemBuilder: (context, index) {
                         final (symbol, code, name) = currencies[index];
                         final isSelected = code == selectedCurrency;
-                        return CupertinoButton(
-                          padding: EdgeInsets.zero,
+                        return HapticFeedbackWrapper(
                           onPressed: () {
                             Navigator.pop(context, code);
                           },
