@@ -1,35 +1,39 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class SettingsState {
+final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
+  throw UnimplementedError();
+});
+
+class Settings {
+  final String theme;
   final String currency;
   final String language;
-  final String theme;
   final String haptics;
   final String security;
   final String notifications;
 
-  const SettingsState({
+  Settings({
+    this.theme = 'System',
     this.currency = 'USD',
     this.language = 'English',
-    this.theme = 'System',
     this.haptics = 'On',
-    this.security = 'Biometric',
+    this.security = 'Off',
     this.notifications = 'On',
   });
 
-  SettingsState copyWith({
+  Settings copyWith({
+    String? theme,
     String? currency,
     String? language,
-    String? theme,
     String? haptics,
     String? security,
     String? notifications,
   }) {
-    return SettingsState(
+    return Settings(
+      theme: theme ?? this.theme,
       currency: currency ?? this.currency,
       language: language ?? this.language,
-      theme: theme ?? this.theme,
       haptics: haptics ?? this.haptics,
       security: security ?? this.security,
       notifications: notifications ?? this.notifications,
@@ -37,22 +41,22 @@ class SettingsState {
   }
 }
 
-class SettingsNotifier extends StateNotifier<SettingsState> {
+class SettingsNotifier extends StateNotifier<Settings> {
   final SharedPreferences _prefs;
 
-  SettingsNotifier(this._prefs) : super(const SettingsState()) {
-    _loadSettings();
-  }
+  SettingsNotifier(this._prefs)
+      : super(Settings(
+          theme: _prefs.getString('theme') ?? 'System',
+          currency: _prefs.getString('currency') ?? 'USD',
+          language: _prefs.getString('language') ?? 'English',
+          haptics: _prefs.getString('haptics') ?? 'On',
+          security: _prefs.getString('security') ?? 'Off',
+          notifications: _prefs.getString('notifications') ?? 'On',
+        ));
 
-  void _loadSettings() {
-    state = SettingsState(
-      currency: _prefs.getString('currency') ?? 'USD',
-      language: _prefs.getString('language') ?? 'English',
-      theme: _prefs.getString('theme') ?? 'System',
-      haptics: _prefs.getString('haptics') ?? 'On',
-      security: _prefs.getString('security') ?? 'Biometric',
-      notifications: _prefs.getString('notifications') ?? 'On',
-    );
+  Future<void> updateTheme(String theme) async {
+    await _prefs.setString('theme', theme);
+    state = state.copyWith(theme: theme);
   }
 
   Future<void> updateCurrency(String currency) async {
@@ -63,11 +67,6 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
   Future<void> updateLanguage(String language) async {
     await _prefs.setString('language', language);
     state = state.copyWith(language: language);
-  }
-
-  Future<void> updateTheme(String theme) async {
-    await _prefs.setString('theme', theme);
-    state = state.copyWith(theme: theme);
   }
 
   Future<void> updateHaptics(String haptics) async {
@@ -86,11 +85,8 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
   }
 }
 
-final settingsProvider = StateNotifierProvider<SettingsNotifier, SettingsState>((ref) {
+final settingsProvider =
+    StateNotifierProvider<SettingsNotifier, Settings>((ref) {
   final prefs = ref.watch(sharedPreferencesProvider);
   return SettingsNotifier(prefs);
-});
-
-final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
-  throw UnimplementedError();
 }); 

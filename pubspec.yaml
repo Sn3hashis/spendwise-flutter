@@ -106,6 +106,10 @@ flutter:
     - assets/animations/
     - assets/animations/currency.json
     - assets/animations/language.json
+    - assets/animations/theme.json
+    - assets/animations/haptics.json
+    - assets/animations/security.json
+    - assets/animations/notification.json
     
     
     

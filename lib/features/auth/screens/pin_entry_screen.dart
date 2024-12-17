@@ -3,12 +3,14 @@ import 'package:lottie/lottie.dart';
 import '../../../core/widgets/system_ui_wrapper.dart';
 import '../screens/login_screen.dart';
 import '../../main/screens/main_layout_screen.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/providers/theme_provider.dart';
 
 enum PinEntryMode { setup, verify }
 
-class PinEntryScreen extends StatefulWidget {
+class PinEntryScreen extends ConsumerStatefulWidget {
   final PinEntryMode mode;
-  final String? setupConfirmPin; // Used during setup to confirm PIN
+  final String? setupConfirmPin;
 
   const PinEntryScreen({
     super.key,
@@ -17,10 +19,10 @@ class PinEntryScreen extends StatefulWidget {
   });
 
   @override
-  State<PinEntryScreen> createState() => _PinEntryScreenState();
+  ConsumerState<PinEntryScreen> createState() => _PinEntryScreenState();
 }
 
-class _PinEntryScreenState extends State<PinEntryScreen> {
+class _PinEntryScreenState extends ConsumerState<PinEntryScreen> {
   final int pinLength = 4;
   String currentPin = '';
   String? errorMessage;
@@ -91,8 +93,7 @@ class _PinEntryScreenState extends State<PinEntryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDarkMode =
-        MediaQuery.platformBrightnessOf(context) == Brightness.dark;
+    final isDarkMode = ref.watch(themeProvider);
     final size = MediaQuery.of(context).size;
     final bottomPadding = MediaQuery.of(context).padding.bottom;
 

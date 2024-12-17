@@ -2,18 +2,20 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import '../../../core/theme/app_theme.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/providers/theme_provider.dart';
 
-class CurrencySelectorScreen extends StatelessWidget {
+class CurrencySelectorScreen extends ConsumerWidget {
   final String selectedCurrency;
   
   const CurrencySelectorScreen({
     super.key,
-    this.selectedCurrency = 'USD',  // Default selected currency
+    required this.selectedCurrency,
   });
 
   @override
-  Widget build(BuildContext context) {
-    final isDarkMode = MediaQuery.platformBrightnessOf(context) == Brightness.dark;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isDarkMode = ref.watch(themeProvider);
     final currencies = [
       ('\$', 'USD', 'US Dollar'),
       ('€', 'EUR', 'Euro'),
@@ -37,12 +39,15 @@ class CurrencySelectorScreen extends StatelessWidget {
               child: Center(
                 child: Theme(
                   data: ThemeData(
-                    brightness: isDarkMode ? Brightness.light : Brightness.dark,
+                    brightness: isDarkMode ? Brightness.dark : Brightness.light,
+                    colorScheme: isDarkMode 
+                        ? const ColorScheme.dark(primary: CupertinoColors.white)
+                        : const ColorScheme.light(),
                   ),
                   child: Lottie.asset(
                     'assets/animations/currency.json',
-                    width: 200,
                     height: 200,
+                    width: 200,
                     fit: BoxFit.contain,
                   ),
                 ),

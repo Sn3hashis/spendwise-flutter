@@ -1,18 +1,20 @@
 import 'package:flutter/cupertino.dart';
 import 'package:lottie/lottie.dart';
 import '../../../core/theme/app_theme.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/providers/theme_provider.dart';
 
-class LanguageSelector extends StatelessWidget {
+class LanguageSelectorScreen extends ConsumerWidget {
   final String selectedLanguage;
   
-  const LanguageSelector({
+  const LanguageSelectorScreen({
     super.key,
-    this.selectedLanguage = 'English',  // Default selected language
+    required this.selectedLanguage,
   });
 
   @override
-  Widget build(BuildContext context) {
-    final isDarkMode = MediaQuery.platformBrightnessOf(context) == Brightness.dark;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isDarkMode = ref.watch(themeProvider);
     final languages = [
       ('🇺🇸', 'English', 'United States'),
       ('🇪🇸', 'Spanish', 'España'),

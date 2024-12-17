@@ -5,15 +5,17 @@ import '../../../core/widgets/system_ui_wrapper.dart';
 import '../../../core/widgets/exit_dialog.dart';
 import 'package:lottie/lottie.dart';
 import 'otp_verification_screen.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/providers/theme_provider.dart';
 
-class SignUpScreen extends StatefulWidget {
+class SignUpScreen extends ConsumerStatefulWidget {
   const SignUpScreen({super.key});
 
   @override
-  State<SignUpScreen> createState() => _SignUpScreenState();
+  ConsumerState<SignUpScreen> createState() => _SignUpScreenState();
 }
 
-class _SignUpScreenState extends State<SignUpScreen> {
+class _SignUpScreenState extends ConsumerState<SignUpScreen> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
@@ -33,8 +35,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         case 'email':
           if (value?.isEmpty ?? true) {
             _emailError = 'Please enter your email';
-          } else if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
-              .hasMatch(value!)) {
+          } else if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value!)) {
             _emailError = 'Please enter a valid email';
           } else {
             _emailError = null;
@@ -53,6 +54,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
     });
   }
 
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
   Future<bool> _onWillPop() async {
     if (Navigator.of(context).canPop()) {
       return true;
@@ -62,17 +71,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
   }
 
   @override
-  void dispose() {
-    _nameController.dispose();
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final isDarkMode =
-        MediaQuery.platformBrightnessOf(context) == Brightness.dark;
+    final isDarkMode = ref.watch(themeProvider);
 
     return WillPopScope(
       onWillPop: _onWillPop,
@@ -164,6 +164,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
+                                  // Name Field
                                   Container(
                                     decoration: BoxDecoration(
                                       color: isDarkMode
@@ -171,46 +172,42 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                           : CupertinoColors.white,
                                       borderRadius: BorderRadius.circular(12),
                                     ),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        CupertinoTextFormFieldRow(
-                                          controller: _nameController,
-                                          placeholder: 'Name',
-                                          prefix: const Icon(
-                                            CupertinoIcons.person,
-                                            color: CupertinoColors.systemGrey,
-                                            size: 20,
-                                          ),
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 12, vertical: 8),
-                                          style: TextStyle(
-                                            color: isDarkMode
-                                                ? CupertinoColors.white
-                                                : CupertinoColors.black,
-                                          ),
-                                          onChanged: (value) =>
-                                              _validateField(value, 'name'),
-                                          decoration: const BoxDecoration(),
-                                        ),
-                                        if (_nameError != null)
-                                          Padding(
-                                            padding: const EdgeInsets.only(
-                                                left: 12, bottom: 8),
-                                            child: Text(
-                                              _nameError!,
-                                              style: const TextStyle(
-                                                color:
-                                                    CupertinoColors.systemRed,
-                                                fontSize: 12,
-                                              ),
-                                            ),
-                                          ),
-                                      ],
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 16, vertical: 8),
+                                    child: CupertinoTextField.borderless(
+                                      controller: _nameController,
+                                      placeholder: 'Full Name',
+                                      prefix: const Icon(
+                                        CupertinoIcons.person,
+                                        color: CupertinoColors.systemGrey,
+                                      ),
+                                      padding: const EdgeInsets.all(12),
+                                      style: TextStyle(
+                                        color: isDarkMode
+                                            ? CupertinoColors.white
+                                            : CupertinoColors.black,
+                                      ),
+                                      placeholderStyle: const TextStyle(
+                                        color: CupertinoColors.systemGrey,
+                                      ),
+                                      onChanged: (value) =>
+                                          _validateField(value, 'name'),
                                     ),
                                   ),
-                                  const SizedBox(height: 12),
+                                  if (_nameError != null)
+                                    Padding(
+                                      padding: const EdgeInsets.only(
+                                          top: 8, left: 16),
+                                      child: Text(
+                                        _nameError!,
+                                        style: const TextStyle(
+                                          color: CupertinoColors.destructiveRed,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ),
+                                  const SizedBox(height: 16),
+                                  // Email Field
                                   Container(
                                     decoration: BoxDecoration(
                                       color: isDarkMode
@@ -218,48 +215,43 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                           : CupertinoColors.white,
                                       borderRadius: BorderRadius.circular(12),
                                     ),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        CupertinoTextFormFieldRow(
-                                          controller: _emailController,
-                                          placeholder: 'Email',
-                                          prefix: const Icon(
-                                            CupertinoIcons.mail,
-                                            color: CupertinoColors.systemGrey,
-                                            size: 20,
-                                          ),
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 12, vertical: 8),
-                                          keyboardType:
-                                              TextInputType.emailAddress,
-                                          style: TextStyle(
-                                            color: isDarkMode
-                                                ? CupertinoColors.white
-                                                : CupertinoColors.black,
-                                          ),
-                                          onChanged: (value) =>
-                                              _validateField(value, 'email'),
-                                          decoration: const BoxDecoration(),
-                                        ),
-                                        if (_emailError != null)
-                                          Padding(
-                                            padding: const EdgeInsets.only(
-                                                left: 12, bottom: 8),
-                                            child: Text(
-                                              _emailError!,
-                                              style: const TextStyle(
-                                                color:
-                                                    CupertinoColors.systemRed,
-                                                fontSize: 12,
-                                              ),
-                                            ),
-                                          ),
-                                      ],
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 16, vertical: 8),
+                                    child: CupertinoTextField.borderless(
+                                      controller: _emailController,
+                                      placeholder: 'Email',
+                                      prefix: const Icon(
+                                        CupertinoIcons.mail,
+                                        color: CupertinoColors.systemGrey,
+                                      ),
+                                      padding: const EdgeInsets.all(12),
+                                      keyboardType: TextInputType.emailAddress,
+                                      style: TextStyle(
+                                        color: isDarkMode
+                                            ? CupertinoColors.white
+                                            : CupertinoColors.black,
+                                      ),
+                                      placeholderStyle: const TextStyle(
+                                        color: CupertinoColors.systemGrey,
+                                      ),
+                                      onChanged: (value) =>
+                                          _validateField(value, 'email'),
                                     ),
                                   ),
-                                  const SizedBox(height: 12),
+                                  if (_emailError != null)
+                                    Padding(
+                                      padding: const EdgeInsets.only(
+                                          top: 8, left: 16),
+                                      child: Text(
+                                        _emailError!,
+                                        style: const TextStyle(
+                                          color: CupertinoColors.destructiveRed,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ),
+                                  const SizedBox(height: 16),
+                                  // Password Field
                                   Container(
                                     decoration: BoxDecoration(
                                       color: isDarkMode
@@ -267,90 +259,96 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                           : CupertinoColors.white,
                                       borderRadius: BorderRadius.circular(12),
                                     ),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Row(
-                                          children: [
-                                            Expanded(
-                                              child: CupertinoTextFormFieldRow(
-                                                controller: _passwordController,
-                                                placeholder: 'Password',
-                                                prefix: const Icon(
-                                                  CupertinoIcons.lock,
-                                                  color: CupertinoColors
-                                                      .systemGrey,
-                                                  size: 20,
-                                                ),
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                        horizontal: 12,
-                                                        vertical: 8),
-                                                obscureText:
-                                                    !_isPasswordVisible,
-                                                style: TextStyle(
-                                                  color: isDarkMode
-                                                      ? CupertinoColors.white
-                                                      : CupertinoColors.black,
-                                                ),
-                                                onChanged: (value) =>
-                                                    _validateField(
-                                                        value, 'password'),
-                                                decoration:
-                                                    const BoxDecoration(),
-                                              ),
-                                            ),
-                                            CupertinoButton(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                      horizontal: 12),
-                                              onPressed: () => setState(() {
-                                                _isPasswordVisible =
-                                                    !_isPasswordVisible;
-                                              }),
-                                              child: Icon(
-                                                _isPasswordVisible
-                                                    ? CupertinoIcons.eye_slash
-                                                    : CupertinoIcons.eye,
-                                                color:
-                                                    CupertinoColors.systemGrey,
-                                                size: 20,
-                                              ),
-                                            ),
-                                          ],
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 16, vertical: 8),
+                                    child: CupertinoTextField.borderless(
+                                      controller: _passwordController,
+                                      placeholder: 'Password',
+                                      prefix: const Icon(
+                                        CupertinoIcons.lock,
+                                        color: CupertinoColors.systemGrey,
+                                      ),
+                                      suffix: GestureDetector(
+                                        onTap: () => setState(() {
+                                          _isPasswordVisible =
+                                              !_isPasswordVisible;
+                                        }),
+                                        child: Icon(
+                                          _isPasswordVisible
+                                              ? CupertinoIcons.eye_slash
+                                              : CupertinoIcons.eye,
+                                          color: CupertinoColors.systemGrey,
                                         ),
-                                        if (_passwordError != null)
-                                          Padding(
-                                            padding: const EdgeInsets.only(
-                                                left: 12, bottom: 8),
-                                            child: Text(
-                                              _passwordError!,
-                                              style: const TextStyle(
-                                                color:
-                                                    CupertinoColors.systemRed,
-                                                fontSize: 12,
-                                              ),
-                                            ),
-                                          ),
-                                      ],
+                                      ),
+                                      padding: const EdgeInsets.all(12),
+                                      obscureText: !_isPasswordVisible,
+                                      style: TextStyle(
+                                        color: isDarkMode
+                                            ? CupertinoColors.white
+                                            : CupertinoColors.black,
+                                      ),
+                                      placeholderStyle: const TextStyle(
+                                        color: CupertinoColors.systemGrey,
+                                      ),
+                                      onChanged: (value) =>
+                                          _validateField(value, 'password'),
                                     ),
                                   ),
+                                  if (_passwordError != null)
+                                    Padding(
+                                      padding: const EdgeInsets.only(
+                                          top: 8, left: 16),
+                                      child: Text(
+                                        _passwordError!,
+                                        style: const TextStyle(
+                                          color: CupertinoColors.destructiveRed,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ),
                                   const SizedBox(height: 24),
+                                  // Terms and Conditions
                                   Row(
                                     children: [
-                                      CupertinoCheckbox(
-                                        value: _agreedToTerms,
-                                        onChanged: (value) => setState(() =>
-                                            _agreedToTerms = value ?? false),
+                                      CupertinoButton(
+                                        padding: EdgeInsets.zero,
+                                        onPressed: () => setState(() =>
+                                            _agreedToTerms = !_agreedToTerms),
+                                        child: Container(
+                                          width: 24,
+                                          height: 24,
+                                          decoration: BoxDecoration(
+                                            borderRadius:
+                                                BorderRadius.circular(6),
+                                            border: Border.all(
+                                              color: _agreedToTerms
+                                                  ? CupertinoTheme.of(context)
+                                                      .primaryColor
+                                                  : CupertinoColors.systemGrey,
+                                            ),
+                                            color: _agreedToTerms
+                                                ? CupertinoTheme.of(context)
+                                                    .primaryColor
+                                                : Colors.transparent,
+                                          ),
+                                          child: _agreedToTerms
+                                              ? const Icon(
+                                                  CupertinoIcons.check_mark,
+                                                  size: 16,
+                                                  color: CupertinoColors.white,
+                                                )
+                                              : null,
+                                        ),
                                       ),
+                                      const SizedBox(width: 8),
                                       Expanded(
                                         child: Text.rich(
                                           TextSpan(
-                                            text:
-                                                'By signing up, you agree to the ',
+                                            text: 'I agree to the ',
                                             style: TextStyle(
-                                              color: CupertinoColors.systemGrey,
+                                              color: isDarkMode
+                                                  ? CupertinoColors.white
+                                                  : CupertinoColors.black,
                                               fontSize: 14,
                                             ),
                                             children: [

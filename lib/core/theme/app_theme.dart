@@ -1,21 +1,23 @@
 import 'package:flutter/cupertino.dart';
 
 class AppTheme {
-  // Background Colors
-  static const Color backgroundDark = Color(0xFF000000);
+  // Light Theme Colors
   static const Color backgroundLight = CupertinoColors.white;
-  
-  // Card Colors
-  static const Color cardDark = Color(0xFF1C1C1E);
   static const Color cardLight = CupertinoColors.white;
-  
-  // Text Colors
-  static const Color textPrimaryDark = CupertinoColors.white;
   static const Color textPrimaryLight = CupertinoColors.black;
-  static const Color textSecondaryDark = Color(0xFF8E8E93);
-  static const Color textSecondaryLight = Color(0xFF8E8E93);
-  
-  // Icon Colors
+  static const Color textSecondaryLight = CupertinoColors.systemGrey;
+  static const Color bottomNavBarLight = CupertinoColors.white;
+  static const Color bottomNavBarBorderLight = Color(0xFFE5E5EA);
+
+  // Dark Theme Colors
+  static const Color backgroundDark = CupertinoColors.black;
+  static const Color cardDark = Color(0xFF1C1C1E);
+  static const Color textPrimaryDark = CupertinoColors.white;
+  static const Color textSecondaryDark = CupertinoColors.systemGrey;
+  static const Color bottomNavBarDark = Color(0xFF1C1C1E);
+  static const Color bottomNavBarBorderDark = Color(0xFF38383A);
+
+  // Icon Colors Map
   static const Map<String, Color> iconColors = {
     'account': Color(0xFF007AFF),
     'settings': Color(0xFF8E8E93),
@@ -26,28 +28,16 @@ class AppTheme {
     'logout': Color(0xFFFF3B30),
   };
 
-  static const Color primaryLight = CupertinoColors.systemBlue;
-  static const Color secondaryLight = CupertinoColors.systemIndigo;
-  static const Color textLight = CupertinoColors.black;
-
-  static const Color primaryDark = CupertinoColors.systemBlue;
-  static const Color secondaryDark = CupertinoColors.systemIndigo;
-  static const Color textDark = CupertinoColors.white;
-
-  static const Color bottomNavBarLight = CupertinoColors.white;
-  static const Color bottomNavBarDark = Color(0xFF1C1C1E);
-  static const Color bottomNavBarBorderLight = Color(0xFFE5E5EA);
-  static const Color bottomNavBarBorderDark = Color(0xFF38383A);
-
   static CupertinoThemeData getLightTheme() {
     return const CupertinoThemeData(
       brightness: Brightness.light,
-      primaryColor: primaryLight,
+      primaryColor: CupertinoColors.systemBlue,
       scaffoldBackgroundColor: backgroundLight,
+      barBackgroundColor: backgroundLight,
       textTheme: CupertinoTextThemeData(
-        primaryColor: primaryLight,
+        primaryColor: textPrimaryLight,
         textStyle: TextStyle(
-          color: textLight,
+          color: textPrimaryLight,
           fontSize: 16,
         ),
       ),
@@ -57,12 +47,13 @@ class AppTheme {
   static CupertinoThemeData getDarkTheme() {
     return const CupertinoThemeData(
       brightness: Brightness.dark,
-      primaryColor: primaryDark,
+      primaryColor: CupertinoColors.systemBlue,
       scaffoldBackgroundColor: backgroundDark,
+      barBackgroundColor: backgroundDark,
       textTheme: CupertinoTextThemeData(
-        primaryColor: primaryDark,
+        primaryColor: textPrimaryDark,
         textStyle: TextStyle(
-          color: textDark,
+          color: textPrimaryDark,
           fontSize: 16,
         ),
       ),
