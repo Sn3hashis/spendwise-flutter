@@ -315,23 +315,21 @@ class _HomeScreenState extends State<HomeScreen> {
                       lineBarsData: [
                         LineChartBarData(
                           spots: [
-                            const FlSpot(0, 3),
-                            const FlSpot(2.6, 2),
-                            const FlSpot(4.9, 5),
-                            const FlSpot(6.8, 2.5),
-                            const FlSpot(8, 4),
-                            const FlSpot(9.5, 3),
-                            const FlSpot(11, 4),
+                            FlSpot(0, 3),
+                            FlSpot(2.6, 2),
+                            FlSpot(4.9, 5),
+                            FlSpot(6.8, 3.1),
+                            FlSpot(8, 4),
+                            FlSpot(9.5, 3),
+                            FlSpot(11, 4),
                           ],
                           isCurved: true,
                           color: CupertinoColors.systemPurple,
                           barWidth: 3,
-                          isStrokeCapRound: true,
                           dotData: FlDotData(show: false),
                           belowBarData: BarAreaData(
                             show: true,
-                            color:
-                                CupertinoColors.systemPurple.withOpacity(0.2),
+                            color: CupertinoColors.systemPurple.withOpacity(0.2),
                           ),
                         ),
                       ],

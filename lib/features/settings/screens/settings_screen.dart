@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import '../../../core/widgets/system_ui_wrapper.dart';
 import 'currency_selector_screen.dart';
 import 'language_selector_screen.dart';
+import 'package:lottie/lottie.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -114,7 +115,149 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Future<void> _showSecuritySelector() async {
+    final isDarkMode = MediaQuery.platformBrightnessOf(context) == Brightness.dark;
+    
+    showCupertinoModalPopup(
+      context: context,
+      builder: (context) => CupertinoActionSheet(
+        title: const Text('Security Method'),
+        actions: [
+          CupertinoActionSheetAction(
+            onPressed: () {
+              setState(() => security = 'PIN');
+              Navigator.pop(context);
+            },
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  CupertinoIcons.lock_circle,
+                  color: isDarkMode ? CupertinoColors.white : CupertinoColors.black,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                const Text('PIN'),
+                if (security == 'PIN') ...[
+                  const SizedBox(width: 8),
+                  Icon(
+                    CupertinoIcons.checkmark_alt,
+                    color: CupertinoColors.activeBlue,
+                    size: 20,
+                  ),
+                ],
+              ],
+            ),
+          ),
+          CupertinoActionSheetAction(
+            onPressed: () {
+              setState(() => security = 'Fingerprint');
+              Navigator.pop(context);
+            },
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  CupertinoIcons.paintbrush,
+                  color: isDarkMode ? CupertinoColors.white : CupertinoColors.black,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                const Text('Fingerprint'),
+                if (security == 'Fingerprint') ...[
+                  const SizedBox(width: 8),
+                  Icon(
+                    CupertinoIcons.checkmark_alt,
+                    color: CupertinoColors.activeBlue,
+                    size: 20,
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+        cancelButton: CupertinoActionSheetAction(
+          onPressed: () => Navigator.pop(context),
+          isDestructiveAction: true,
+          child: const Text('Cancel'),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showNotificationSelector() async {
+    final isDarkMode = MediaQuery.platformBrightnessOf(context) == Brightness.dark;
+    
+    showCupertinoModalPopup(
+      context: context,
+      builder: (context) => CupertinoActionSheet(
+        title: const Text('Notifications'),
+        actions: [
+          CupertinoActionSheetAction(
+            onPressed: () {
+              setState(() => notificationsEnabled = true);
+              Navigator.pop(context);
+            },
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  CupertinoIcons.bell_fill,
+                  color: isDarkMode ? CupertinoColors.white : CupertinoColors.black,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                const Text('On'),
+                if (notificationsEnabled) ...[
+                  const SizedBox(width: 8),
+                  Icon(
+                    CupertinoIcons.checkmark_alt,
+                    color: CupertinoColors.activeBlue,
+                    size: 20,
+                  ),
+                ],
+              ],
+            ),
+          ),
+          CupertinoActionSheetAction(
+            onPressed: () {
+              setState(() => notificationsEnabled = false);
+              Navigator.pop(context);
+            },
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  CupertinoIcons.bell_slash_fill,
+                  color: isDarkMode ? CupertinoColors.white : CupertinoColors.black,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                const Text('Off'),
+                if (!notificationsEnabled) ...[
+                  const SizedBox(width: 8),
+                  Icon(
+                    CupertinoIcons.checkmark_alt,
+                    color: CupertinoColors.activeBlue,
+                    size: 20,
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+        cancelButton: CupertinoActionSheetAction(
+          onPressed: () => Navigator.pop(context),
+          isDestructiveAction: true,
+          child: const Text('Cancel'),
+        ),
+      ),
+    );
+  }
+
   Future<void> _showHapticsSelector() async {
+    final isDarkMode = MediaQuery.platformBrightnessOf(context) == Brightness.dark;
+    
     showCupertinoModalPopup(
       context: context,
       builder: (context) => CupertinoActionSheet(
@@ -125,14 +268,52 @@ class _SettingsScreenState extends State<SettingsScreen> {
               setState(() => hapticsEnabled = true);
               Navigator.pop(context);
             },
-            child: const Text('On'),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  CupertinoIcons.hand_raised_fill,
+                  color: isDarkMode ? CupertinoColors.white : CupertinoColors.black,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                const Text('On'),
+                if (hapticsEnabled) ...[
+                  const SizedBox(width: 8),
+                  Icon(
+                    CupertinoIcons.checkmark_alt,
+                    color: CupertinoColors.activeBlue,
+                    size: 20,
+                  ),
+                ],
+              ],
+            ),
           ),
           CupertinoActionSheetAction(
             onPressed: () {
               setState(() => hapticsEnabled = false);
               Navigator.pop(context);
             },
-            child: const Text('Off'),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  CupertinoIcons.hand_raised_slash,
+                  color: isDarkMode ? CupertinoColors.white : CupertinoColors.black,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                const Text('Off'),
+                if (!hapticsEnabled) ...[
+                  const SizedBox(width: 8),
+                  Icon(
+                    CupertinoIcons.checkmark_alt,
+                    color: CupertinoColors.activeBlue,
+                    size: 20,
+                  ),
+                ],
+              ],
+            ),
           ),
         ],
         cancelButton: CupertinoActionSheetAction(
@@ -232,137 +413,141 @@ class _SettingsScreenState extends State<SettingsScreen> {
               : CupertinoColors.systemBackground.withOpacity(0.8),
         ),
         child: SafeArea(
-          child: Column(
-            children: [
-              const Spacer(),  // This pushes content to bottom
-              SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 24,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 24,
+            ),
+            child: Column(
+              children: [
+                Center(
+                  child: Lottie.asset(
+                    'assets/animations/settings.json',
+                    width: 200,
+                    height: 150,
+                    fit: BoxFit.contain,
+                  ),
                 ),
-                child: Column(
-                  children: [
-                    // First Section
-                    Container(
-                      decoration: BoxDecoration(
-                        color: CupertinoColors.systemBackground,
-                        borderRadius: BorderRadius.circular(12),
+                const SizedBox(height: 24),
+                // First Section
+                Container(
+                  decoration: BoxDecoration(
+                    color: CupertinoColors.systemBackground,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    children: [
+                      _buildSettingItem(
+                        icon: CupertinoIcons.money_dollar_circle,
+                        title: 'Currency',
+                        value: currency,
+                        iconColor: CupertinoColors.systemGreen,
+                        onTap: () async {
+                          final result = await Navigator.push<String>(
+                            context,
+                            CupertinoPageRoute(
+                              builder: (context) => const CurrencySelector(),
+                            ),
+                          );
+                          if (result != null) {
+                            setState(() => currency = result);
+                          }
+                        },
                       ),
-                      child: Column(
-                        children: [
-                          _buildSettingItem(
-                            icon: CupertinoIcons.money_dollar_circle,
-                            title: 'Currency',
-                            value: currency,
-                            iconColor: CupertinoColors.systemGreen,
-                            onTap: () async {
-                              final result = await Navigator.push<String>(
-                                context,
-                                CupertinoPageRoute(
-                                  builder: (context) => const CurrencySelector(),
-                                ),
-                              );
-                              if (result != null) {
-                                setState(() => currency = result);
-                              }
-                            },
-                          ),
-                          _buildDivider(isDarkMode),
-                          _buildSettingItem(
-                            icon: CupertinoIcons.globe,
-                            title: 'Language',
-                            value: language,
-                            iconColor: CupertinoColors.systemBlue,
-                            onTap: () async {
-                              final result = await Navigator.push<String>(
-                                context,
-                                CupertinoPageRoute(
-                                  builder: (context) => const LanguageSelector(),
-                                ),
-                              );
-                              if (result != null) {
-                                setState(() => language = result);
-                              }
-                            },
-                          ),
-                          _buildDivider(isDarkMode),
-                          _buildSettingItem(
-                            icon: CupertinoIcons.moon_stars,
-                            title: 'Theme',
-                            value: theme,
-                            iconColor: CupertinoColors.systemIndigo,
-                            onTap: _showThemeSelector,
-                          ),
-                          _buildDivider(isDarkMode),
-                          _buildSettingItem(
-                            icon: CupertinoIcons.hand_raised,
-                            title: 'Haptics',
-                            value: hapticsEnabled ? 'On' : 'Off',
-                            iconColor: CupertinoColors.systemPurple,
-                            onTap: _showHapticsSelector,
-                          ),
-                        ],
+                      _buildDivider(isDarkMode),
+                      _buildSettingItem(
+                        icon: CupertinoIcons.globe,
+                        title: 'Language',
+                        value: language,
+                        iconColor: CupertinoColors.systemBlue,
+                        onTap: () async {
+                          final result = await Navigator.push<String>(
+                            context,
+                            CupertinoPageRoute(
+                              builder: (context) => const LanguageSelector(),
+                            ),
+                          );
+                          if (result != null) {
+                            setState(() => language = result);
+                          }
+                        },
                       ),
-                    ),
-                    const SizedBox(height: 22),
-                    // Second Section
-                    Container(
-                      decoration: BoxDecoration(
-                        color: CupertinoColors.systemBackground,
-                        borderRadius: BorderRadius.circular(12),
+                      _buildDivider(isDarkMode),
+                      _buildSettingItem(
+                        icon: CupertinoIcons.moon_stars,
+                        title: 'Theme',
+                        value: theme,
+                        iconColor: CupertinoColors.systemIndigo,
+                        onTap: _showThemeSelector,
                       ),
-                      child: Column(
-                        children: [
-                          _buildSettingItem(
-                            icon: CupertinoIcons.lock_shield,
-                            title: 'Security',
-                            value: 'Fingerprint',
-                            iconColor: CupertinoColors.systemRed,
-                            onTap: () {},
-                          ),
-                          _buildDivider(isDarkMode),
-                          _buildSettingItem(
-                            icon: CupertinoIcons.bell,
-                            title: 'Notification',
-                            value: '',
-                            iconColor: CupertinoColors.systemOrange,
-                            onTap: () {},
-                          ),
-                        ],
+                      _buildDivider(isDarkMode),
+                      _buildSettingItem(
+                        icon: CupertinoIcons.hand_raised,
+                        title: 'Haptics',
+                        value: hapticsEnabled ? 'On' : 'Off',
+                        iconColor: CupertinoColors.systemPurple,
+                        onTap: _showHapticsSelector,
                       ),
-                    ),
-                    const SizedBox(height: 22),
-                    // Third Section
-                    Container(
-                      decoration: BoxDecoration(
-                        color: CupertinoColors.systemBackground,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Column(
-                        children: [
-                          _buildSettingItem(
-                            icon: CupertinoIcons.info_circle,
-                            title: 'About',
-                            value: '',
-                            iconColor: CupertinoColors.systemGrey,
-                            onTap: () {},
-                          ),
-                          _buildDivider(isDarkMode),
-                          _buildSettingItem(
-                            icon: CupertinoIcons.question_circle,
-                            title: 'Help',
-                            value: '',
-                            iconColor: CupertinoColors.systemGrey,
-                            onTap: () {},
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 22),
+                // Second Section
+                Container(
+                  decoration: BoxDecoration(
+                    color: CupertinoColors.systemBackground,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    children: [
+                      _buildSettingItem(
+                        icon: CupertinoIcons.lock_shield,
+                        title: 'Security',
+                        value: security,
+                        iconColor: CupertinoColors.systemRed,
+                        onTap: _showSecuritySelector,
+                      ),
+                      _buildDivider(isDarkMode),
+                      _buildSettingItem(
+                        icon: CupertinoIcons.bell,
+                        title: 'Notification',
+                        value: notificationsEnabled ? 'On' : 'Off',
+                        iconColor: CupertinoColors.systemOrange,
+                        onTap: _showNotificationSelector,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 22),
+                // Third Section
+                Container(
+                  decoration: BoxDecoration(
+                    color: CupertinoColors.systemBackground,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    children: [
+                      _buildSettingItem(
+                        icon: CupertinoIcons.info_circle,
+                        title: 'About',
+                        value: '',
+                        iconColor: CupertinoColors.systemGrey,
+                        onTap: () {},
+                      ),
+                      _buildDivider(isDarkMode),
+                      _buildSettingItem(
+                        icon: CupertinoIcons.question_circle,
+                        title: 'Help',
+                        value: '',
+                        iconColor: CupertinoColors.systemGrey,
+                        onTap: () {},
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
           ),
         ),
       ),
