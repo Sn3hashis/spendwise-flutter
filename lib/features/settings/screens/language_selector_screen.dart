@@ -1,11 +1,18 @@
 import 'package:flutter/cupertino.dart';
 import 'package:lottie/lottie.dart';
+import '../../../core/theme/app_theme.dart';
 
 class LanguageSelector extends StatelessWidget {
-  const LanguageSelector({super.key});
+  final String selectedLanguage;
+  
+  const LanguageSelector({
+    super.key,
+    this.selectedLanguage = 'English',  // Default selected language
+  });
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = MediaQuery.platformBrightnessOf(context) == Brightness.dark;
     final languages = [
       ('🇺🇸', 'English', 'United States'),
       ('🇪🇸', 'Spanish', 'España'),
@@ -13,12 +20,13 @@ class LanguageSelector extends StatelessWidget {
       ('🇩🇪', 'German', 'Deutschland'),
       ('🇨🇳', 'Chinese', '中国'),
       ('🇯🇵', 'Japanese', '日本'),
-      // Add more languages as needed
     ];
 
     return CupertinoPageScaffold(
-      navigationBar: const CupertinoNavigationBar(
-        middle: Text('Language'),
+      backgroundColor: isDarkMode ? AppTheme.backgroundDark : AppTheme.backgroundLight,
+      navigationBar: CupertinoNavigationBar(
+        backgroundColor: isDarkMode ? AppTheme.backgroundDark : AppTheme.backgroundLight,
+        middle: const Text('Language'),
         border: null,
       ),
       child: SafeArea(
@@ -27,8 +35,8 @@ class LanguageSelector extends StatelessWidget {
             Expanded(
               child: Center(
                 child: Lottie.asset(
-                  'assets/animations/language.json',  // Make sure to add this animation
-                  width: 300,
+                  'assets/animations/language.json',
+                  width: 200,
                   height: 200,
                   fit: BoxFit.contain,
                 ),
@@ -36,7 +44,7 @@ class LanguageSelector extends StatelessWidget {
             ),
             Container(
               decoration: BoxDecoration(
-                color: CupertinoColors.systemBackground,
+                color: isDarkMode ? AppTheme.cardDark : AppTheme.cardLight,
                 borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(20),
                 ),
@@ -62,11 +70,12 @@ class LanguageSelector extends StatelessWidget {
                     ),
                   ),
                   SizedBox(
-                    height: 400,  // Fixed height for the list
+                    height: 400,
                     child: ListView.builder(
                       itemCount: languages.length,
                       itemBuilder: (context, index) {
-                        final (flag, language, native) = languages[index];
+                        final (flag, language, country) = languages[index];
+                        final isSelected = language == selectedLanguage;
                         return CupertinoButton(
                           padding: EdgeInsets.zero,
                           onPressed: () {
@@ -89,30 +98,41 @@ class LanguageSelector extends StatelessWidget {
                               children: [
                                 Text(
                                   flag,
-                                  style: const TextStyle(
-                                    fontSize: 30,
-                                  ),
+                                  style: const TextStyle(fontSize: 30),
                                 ),
                                 const SizedBox(width: 12),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      language,
-                                      style: const TextStyle(
-                                        fontSize: 17,
-                                        fontWeight: FontWeight.w600,
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        language,
+                                        style: TextStyle(
+                                          fontSize: 17,
+                                          fontWeight: FontWeight.w600,
+                                          color: isDarkMode 
+                                              ? AppTheme.textPrimaryDark 
+                                              : AppTheme.textPrimaryLight,
+                                        ),
                                       ),
-                                    ),
-                                    Text(
-                                      native,
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        color: CupertinoColors.systemGrey,
+                                      Text(
+                                        country,
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: isDarkMode 
+                                              ? AppTheme.textSecondaryDark 
+                                              : AppTheme.textSecondaryLight,
+                                        ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
+                                if (isSelected)
+                                  Icon(
+                                    CupertinoIcons.checkmark_alt,
+                                    color: const Color(0xFF007AFF),
+                                    size: 20,
+                                  ),
                               ],
                             ),
                           ),

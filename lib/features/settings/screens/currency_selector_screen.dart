@@ -1,24 +1,33 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
+import '../../../core/theme/app_theme.dart';
 
-class CurrencySelector extends StatelessWidget {
-  const CurrencySelector({super.key});
+class CurrencySelectorScreen extends StatelessWidget {
+  final String selectedCurrency;
+  
+  const CurrencySelectorScreen({
+    super.key,
+    this.selectedCurrency = 'USD',  // Default selected currency
+  });
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = MediaQuery.platformBrightnessOf(context) == Brightness.dark;
     final currencies = [
       ('\$', 'USD', 'US Dollar'),
       ('€', 'EUR', 'Euro'),
       ('£', 'GBP', 'British Pound'),
       ('¥', 'JPY', 'Japanese Yen'),
       ('₹', 'INR', 'Indian Rupee'),
-     
       // Add more currencies as needed
     ];
 
     return CupertinoPageScaffold(
-      navigationBar: const CupertinoNavigationBar(
-        middle: Text('Currency'),
+      backgroundColor: isDarkMode ? AppTheme.backgroundDark : AppTheme.backgroundLight,
+      navigationBar: CupertinoNavigationBar(
+        backgroundColor: isDarkMode ? AppTheme.backgroundDark : AppTheme.backgroundLight,
+        middle: const Text('Currency'),
         border: null,
       ),
       child: SafeArea(
@@ -26,17 +35,22 @@ class CurrencySelector extends StatelessWidget {
           children: [
             Expanded(
               child: Center(
-                child: Lottie.asset(
-                  'assets/animations/currency.json',  // Make sure to add this animation
-                  width: 200,
-                  height: 200,
-                  fit: BoxFit.contain,
+                child: Theme(
+                  data: ThemeData(
+                    brightness: isDarkMode ? Brightness.light : Brightness.dark,
+                  ),
+                  child: Lottie.asset(
+                    'assets/animations/currency.json',
+                    width: 200,
+                    height: 200,
+                    fit: BoxFit.contain,
+                  ),
                 ),
               ),
             ),
             Container(
               decoration: BoxDecoration(
-                color: CupertinoColors.systemBackground,
+                color: isDarkMode ? AppTheme.cardDark : AppTheme.cardLight,
                 borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(20),
                 ),
@@ -62,11 +76,12 @@ class CurrencySelector extends StatelessWidget {
                     ),
                   ),
                   SizedBox(
-                    height: 400,  // Fixed height for the list
+                    height: 400,
                     child: ListView.builder(
                       itemCount: currencies.length,
                       itemBuilder: (context, index) {
                         final (symbol, code, name) = currencies[index];
+                        final isSelected = code == selectedCurrency;
                         return CupertinoButton(
                           padding: EdgeInsets.zero,
                           onPressed: () {
@@ -105,25 +120,38 @@ class CurrencySelector extends StatelessWidget {
                                   ),
                                 ),
                                 const SizedBox(width: 12),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      code,
-                                      style: const TextStyle(
-                                        fontSize: 17,
-                                        fontWeight: FontWeight.w600,
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        code,
+                                        style: TextStyle(
+                                          fontSize: 17,
+                                          fontWeight: FontWeight.w600,
+                                          color: isDarkMode 
+                                              ? AppTheme.textPrimaryDark 
+                                              : AppTheme.textPrimaryLight,
+                                        ),
                                       ),
-                                    ),
-                                    Text(
-                                      name,
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        color: CupertinoColors.systemGrey,
+                                      Text(
+                                        name,
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: isDarkMode 
+                                              ? AppTheme.textSecondaryDark 
+                                              : AppTheme.textSecondaryLight,
+                                        ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
+                                if (isSelected)
+                                  Icon(
+                                    CupertinoIcons.checkmark_alt,
+                                    color: const Color(0xFF007AFF),
+                                    size: 20,
+                                  ),
                               ],
                             ),
                           ),

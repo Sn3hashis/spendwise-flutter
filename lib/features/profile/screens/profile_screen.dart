@@ -1,120 +1,80 @@
 import 'package:flutter/cupertino.dart';
-import '../../../core/widgets/system_ui_wrapper.dart';
-import '../../../features/settings/screens/settings_screen.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../settings/screens/settings_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
-
-  Widget _buildProfileItem({
-    required IconData icon,
-    required String title,
-    required Color iconBackground,
-    VoidCallback? onTap,
-  }) {
-    return CupertinoButton(
-      padding: EdgeInsets.zero,
-      onPressed: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 14),
-        decoration: BoxDecoration(
-          color: CupertinoColors.systemBackground,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(7),
-              decoration: BoxDecoration(
-                color: iconBackground.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(9),
-              ),
-              child: Icon(
-                icon,
-                color: iconBackground,
-                size: 22,
-              ),
-            ),
-            const SizedBox(width: 9),
-            Expanded(
-              child: Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 16,
-                  color: CupertinoColors.label,
-                ),
-              ),
-            ),
-            const Icon(
-              CupertinoIcons.chevron_right,
-              color: CupertinoColors.systemGrey,
-              size: 22,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
     final isDarkMode = MediaQuery.platformBrightnessOf(context) == Brightness.dark;
 
-    return SystemUIWrapper(
+    return WillPopScope(
+      onWillPop: () async {
+        if (Navigator.of(context).canPop()) {
+          Navigator.of(context).popUntil((route) => route.isFirst);
+          return false;
+        }
+        return true;
+      },
       child: CupertinoPageScaffold(
-        backgroundColor: isDarkMode 
-            ? CupertinoColors.black 
-            : CupertinoColors.systemGroupedBackground,
+        backgroundColor: isDarkMode ? AppTheme.backgroundDark : AppTheme.backgroundLight,
         child: SafeArea(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
             child: Column(
               children: [
                 // Profile Header
                 Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: CupertinoColors.systemBackground,
+                    color: isDarkMode ? const Color(0xFF1C1C1E) : CupertinoColors.white,
                     borderRadius: BorderRadius.circular(16),
+                    border: isDarkMode 
+                        ? null 
+                        : Border.all(color: const Color(0xFFE5E5EA)),
                   ),
                   child: Row(
                     children: [
                       Container(
-                        width: 90,
-                        height: 90,
+                        width: 64,
+                        height: 64,
                         decoration: BoxDecoration(
-                          color: CupertinoColors.systemGrey5,
+                          color: isDarkMode ? CupertinoColors.white : const Color(0xFFF2F2F7),
                           shape: BoxShape.circle,
-                          border: Border.all(
-                            color: CupertinoColors.systemGrey4,
-                            width: 1,
-                          ),
                         ),
-                        child: const Center(
-                          child: Icon(
-                            CupertinoIcons.person_alt,
-                            size: 40,
-                            color: CupertinoColors.systemGrey,
-                          ),
+                        child: Icon(
+                          CupertinoIcons.person_fill,
+                          size: 32,
+                          color: isDarkMode 
+                              ? CupertinoColors.systemGrey 
+                              : const Color(0xFF8E8E93),
                         ),
                       ),
                       const SizedBox(width: 16),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
-                          children: const [
+                          children: [
                             Text(
                               'Iriana Saliha',
                               style: TextStyle(
-                                fontSize: 22,
+                                fontSize: 20,
                                 fontWeight: FontWeight.w600,
+                                color: isDarkMode 
+                                    ? AppTheme.textPrimaryDark 
+                                    : AppTheme.textPrimaryLight,
                               ),
                             ),
-                            SizedBox(height: 4),
+                            const SizedBox(height: 4),
                             Text(
                               'iriana.saliha@example.com',
                               style: TextStyle(
                                 fontSize: 14,
-                                color: CupertinoColors.systemGrey,
+                                color: isDarkMode 
+                                    ? AppTheme.textSecondaryDark 
+                                    : AppTheme.textSecondaryLight,
                               ),
                             ),
                           ],
@@ -123,76 +83,77 @@ class ProfileScreen extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(height: 22),
                 
-                // Account Section
-                _buildProfileItem(
-                  icon: CupertinoIcons.creditcard,
-                  title: 'Account',
-                  iconBackground: CupertinoColors.systemBlue,
-                  onTap: () {},
-                ),
-                const SizedBox(height: 9),
-                _buildProfileItem(
-                  icon: CupertinoIcons.settings,
-                  title: 'Settings',
-                  iconBackground: CupertinoColors.systemGrey,
-                  onTap: () {
-                    Navigator.of(context).push(
-                      CupertinoPageRoute(
-                        builder: (context) => const SettingsScreen(),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 9),
-                _buildProfileItem(
-                  icon: CupertinoIcons.square_arrow_down,
-                  title: 'Export Data',
-                  iconBackground: CupertinoColors.systemPurple,
-                  onTap: () {},
-                ),
-                
-                const SizedBox(height: 22),
-                
-                // Additional Items
-                _buildProfileItem(
-                  icon: CupertinoIcons.tag,
-                  title: 'Manage Category',
-                  iconBackground: CupertinoColors.systemGreen,
-                  onTap: () {},
-                ),
-                const SizedBox(height: 9),
-                _buildProfileItem(
-                  icon: CupertinoIcons.person_2,
-                  title: 'Manage Payees',
-                  iconBackground: CupertinoColors.systemOrange,
-                  onTap: () {},
-                ),
-                const SizedBox(height: 9),
-                _buildProfileItem(
-                  icon: CupertinoIcons.money_dollar_circle,
-                  title: 'Lend Management',
-                  iconBackground: CupertinoColors.systemIndigo,
-                  onTap: () {},
-                ),
-                
-                const SizedBox(height: 22),
-                
-                // Logout Button with padding at the bottom
+                // Menu Items
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: CupertinoColors.systemRed.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: _buildProfileItem(
-                      icon: CupertinoIcons.arrow_right_circle,
-                      title: 'Logout',
-                      iconBackground: CupertinoColors.systemRed,
-                      onTap: () {},
-                    ),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    children: [
+                      _buildMenuItem(
+                        context: context,
+                        icon: CupertinoIcons.creditcard,
+                        iconColor: AppTheme.iconColors['account']!,
+                        title: 'Account',
+                        isDarkMode: isDarkMode,
+                        onTap: () {},
+                      ),
+                      _buildMenuItem(
+                        context: context,
+                        icon: CupertinoIcons.settings,
+                        iconColor: AppTheme.iconColors['settings']!,
+                        title: 'Settings',
+                        isDarkMode: isDarkMode,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            CupertinoPageRoute(
+                              builder: (context) => const SettingsScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                      _buildMenuItem(
+                        context: context,
+                        icon: CupertinoIcons.arrow_down_doc,
+                        iconColor: AppTheme.iconColors['export']!,
+                        title: 'Export Data',
+                        isDarkMode: isDarkMode,
+                        onTap: () {},
+                      ),
+                      _buildMenuItem(
+                        context: context,
+                        icon: CupertinoIcons.tag,
+                        iconColor: AppTheme.iconColors['category']!,
+                        title: 'Manage Category',
+                        isDarkMode: isDarkMode,
+                        onTap: () {},
+                      ),
+                      _buildMenuItem(
+                        context: context,
+                        icon: CupertinoIcons.person_2,
+                        iconColor: AppTheme.iconColors['payees']!,
+                        title: 'Manage Payees',
+                        isDarkMode: isDarkMode,
+                        onTap: () {},
+                      ),
+                      _buildMenuItem(
+                        context: context,
+                        icon: CupertinoIcons.money_dollar,
+                        iconColor: AppTheme.iconColors['lend']!,
+                        title: 'Lend Management',
+                        isDarkMode: isDarkMode,
+                        onTap: () {},
+                      ),
+                      _buildMenuItem(
+                        context: context,
+                        icon: CupertinoIcons.arrow_right_circle,
+                        iconColor: AppTheme.iconColors['logout']!,
+                        title: 'Logout',
+                        isDarkMode: isDarkMode,
+                        showDivider: false,
+                        onTap: () {},
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -200,6 +161,75 @@ class ProfileScreen extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildMenuItem({
+    required BuildContext context,
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required bool isDarkMode,
+    required VoidCallback onTap,
+    bool showDivider = true,
+  }) {
+    return Column(
+      children: [
+        CupertinoButton(
+          padding: EdgeInsets.zero,
+          onPressed: onTap,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+            decoration: BoxDecoration(
+              color: isDarkMode ? AppTheme.cardDark : AppTheme.cardLight,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isDarkMode 
+                    ? const Color(0xFF2C2C2E) 
+                    : const Color(0xFFE5E5EA),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: iconColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    icon,
+                    color: iconColor,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 17,
+                      color: isDarkMode 
+                          ? AppTheme.textPrimaryDark 
+                          : AppTheme.textPrimaryLight,
+                    ),
+                  ),
+                ),
+                Icon(
+                  CupertinoIcons.chevron_forward,
+                  color: isDarkMode 
+                      ? AppTheme.textSecondaryDark 
+                      : AppTheme.textSecondaryLight,
+                  size: 16,
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (showDivider) const SizedBox(height: 8),
+      ],
     );
   }
 }

@@ -2,25 +2,42 @@ import 'package:flutter/cupertino.dart';
 import 'package:spendwise/core/theme/app_theme.dart';
 import 'features/onboarding/screens/onboarding_screen.dart';
 import 'core/widgets/system_ui_wrapper.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'features/settings/providers/settings_provider.dart';
 
-void main() {
-  runApp(const MyApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final prefs = await SharedPreferences.getInstance();
+  
+  runApp(
+    ProviderScope(
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends ConsumerWidget {
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(settingsProvider);
+    
     return SystemUIWrapper(
       child: Builder(builder: (context) {
-        final brightness = MediaQuery.platformBrightnessOf(context);
-        final isDarkMode = brightness == Brightness.dark;
+        final isDarkMode = switch (settings.theme) {
+          'Dark' => true,
+          'Light' => false,
+          _ => MediaQuery.platformBrightnessOf(context) == Brightness.dark,
+        };
 
         return CupertinoApp(
           debugShowCheckedModeBanner: false,
-          theme:
-              isDarkMode ? AppTheme.getDarkTheme() : AppTheme.getLightTheme(),
+          theme: isDarkMode ? AppTheme.getDarkTheme() : AppTheme.getLightTheme(),
           home: const OnboardingScreen(),
         );
       }),

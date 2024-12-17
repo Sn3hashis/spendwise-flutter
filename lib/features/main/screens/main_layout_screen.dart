@@ -122,101 +122,133 @@ class _MainLayoutScreenState extends State<MainLayoutScreen>
     });
   }
 
+  Future<bool> _onWillPop() async {
+    if (_currentIndex != 0) {
+      setState(() {
+        _currentIndex = 0;
+        _pageController.jumpToPage(0);
+      });
+      return false;
+    }
+
+    return await showCupertinoDialog<bool>(
+      context: context,
+      builder: (context) => CupertinoAlertDialog(
+        title: const Text('Exit App'),
+        content: const Text('Are you sure you want to exit?'),
+        actions: [
+          CupertinoDialogAction(
+            isDestructiveAction: true,
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          CupertinoDialogAction(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Exit'),
+          ),
+        ],
+      ),
+    ) ?? false;
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDarkMode = MediaQuery.platformBrightnessOf(context) == Brightness.dark;
     
-    return CupertinoPageScaffold(
-      child: Stack(
-        children: [
-          PageView(
-            controller: _pageController,
-            physics: const NeverScrollableScrollPhysics(),
-            onPageChanged: (index) {
-              setState(() {
-                _currentIndex = index > 1 ? index + 1 : index;
-              });
-            },
-            children: [
-              const HomeScreen(),
-              const TransactionsScreen(),
-              const BudgetScreen(),
-              const ProfileScreen(),
-            ],
-          ),
-          
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: Container(
-              margin: const EdgeInsets.all(16),
-              height: 65,
-              decoration: BoxDecoration(
-                color: isDarkMode ? AppTheme.bottomNavBarDark : AppTheme.bottomNavBarLight,
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(
-                  color: isDarkMode 
-                      ? AppTheme.bottomNavBarBorderDark 
-                      : AppTheme.bottomNavBarBorderLight,
-                  width: 0.5,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: isDarkMode 
-                        ? Colors.black.withOpacity(0.3)
-                        : Colors.grey.withOpacity(0.1),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _buildNavItem(0, navItems[0].icon, navItems[0].label),
-                  _buildNavItem(1, navItems[1].icon, navItems[1].label),
-                  const SizedBox(width: 56),
-                  _buildNavItem(3, navItems[3].icon, navItems[3].label),
-                  _buildNavItem(4, navItems[4].icon, navItems[4].label),
-                ],
-              ),
+    return WillPopScope(
+      onWillPop: _onWillPop,
+      child: CupertinoPageScaffold(
+        child: Stack(
+          children: [
+            PageView(
+              controller: _pageController,
+              physics: const NeverScrollableScrollPhysics(),
+              onPageChanged: (index) {
+                setState(() {
+                  _currentIndex = index > 1 ? index + 1 : index;
+                });
+              },
+              children: [
+                const HomeScreen(),
+                const TransactionsScreen(),
+                const BudgetScreen(),
+                const ProfileScreen(),
+              ],
             ),
-          ),
-          
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 44,
-            child: Center(
+            
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
               child: Container(
-                width: 56,
-                height: 56,
+                margin: const EdgeInsets.all(16),
+                height: 65,
                 decoration: BoxDecoration(
-                  shape: BoxShape.circle,
+                  color: isDarkMode ? AppTheme.bottomNavBarDark : AppTheme.bottomNavBarLight,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(
+                    color: isDarkMode 
+                        ? AppTheme.bottomNavBarBorderDark 
+                        : AppTheme.bottomNavBarBorderLight,
+                    width: 0.5,
+                  ),
                   boxShadow: [
                     BoxShadow(
-                      color: CupertinoColors.activeBlue.withOpacity(0.3),
+                      color: isDarkMode 
+                          ? Colors.black.withOpacity(0.3)
+                          : Colors.grey.withOpacity(0.1),
                       blurRadius: 8,
                       offset: const Offset(0, 4),
                     ),
                   ],
                 ),
-                child: RawMaterialButton(
-                  onPressed: () => _showAddTransactionMenu(),
-                  elevation: 0,
-                  fillColor: CupertinoColors.activeBlue,
-                  shape: const CircleBorder(),
-                  child: const Icon(
-                    CupertinoIcons.add,
-                    color: CupertinoColors.white,
-                    size: 28,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildNavItem(0, navItems[0].icon, navItems[0].label),
+                    _buildNavItem(1, navItems[1].icon, navItems[1].label),
+                    const SizedBox(width: 56),
+                    _buildNavItem(3, navItems[3].icon, navItems[3].label),
+                    _buildNavItem(4, navItems[4].icon, navItems[4].label),
+                  ],
+                ),
+              ),
+            ),
+            
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 44,
+              child: Center(
+                child: Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: CupertinoColors.activeBlue.withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: RawMaterialButton(
+                    onPressed: () => _showAddTransactionMenu(),
+                    elevation: 0,
+                    fillColor: CupertinoColors.activeBlue,
+                    shape: const CircleBorder(),
+                    child: const Icon(
+                      CupertinoIcons.add,
+                      color: CupertinoColors.white,
+                      size: 28,
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
