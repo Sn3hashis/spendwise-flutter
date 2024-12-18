@@ -5,6 +5,7 @@ import '../../../core/providers/theme_provider.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../categories/screens/categories_screen.dart';
 import '../../settings/screens/settings_screen.dart';
+import '../../payees/screens/manage_payees_screen.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -141,7 +142,14 @@ class ProfileScreen extends ConsumerWidget {
                     iconColor: AppTheme.iconColors['payees']!,
                     title: 'Manage Payees',
                     isDarkMode: isDarkMode,
-                    onTap: () {},
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        CupertinoPageRoute(
+                          builder: (context) => const ManagePayeesScreen(),
+                        ),
+                      );
+                    },
                   ),
                   _buildMenuItem(
                     context: context,

@@ -13,6 +13,8 @@ import '../providers/transactions_provider.dart';
 import 'base_transaction_screen.dart';
 import '../models/repeat_frequency.dart';
 import '../widgets/repeat_dialog.dart';
+import '../../payees/models/payee_model.dart';
+import '../../payees/providers/payees_provider.dart';
 
 class TransferScreen extends ConsumerStatefulWidget {
   const TransferScreen({super.key});
@@ -31,6 +33,8 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
   bool _isRepeat = false;
   RepeatFrequency _repeatFrequency = RepeatFrequency.monthly;
   DateTime? _repeatEndDate;
+  Payee? _fromPayee;
+  Payee? _toPayee;
 
   @override
   void initState() {
@@ -49,7 +53,8 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
     setState(() {
       _isValid = _amountController.text.isNotEmpty && 
                  double.tryParse(_amountController.text) != null &&
-                 double.parse(_amountController.text) > 0;
+                 double.parse(_amountController.text) > 0 &&
+                 _toPayee != null;
     });
   }
 
@@ -57,6 +62,51 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
     setState(() {
       _attachments.removeAt(index);
     });
+  }
+
+  void _showPayeeSelection(bool isFromPayee) {
+    showCupertinoModalPopup(
+      context: context,
+      builder: (context) => CupertinoActionSheet(
+        title: Text(isFromPayee ? 'Select From Payee' : 'Select To Payee'),
+        message: const Text('Choose a payee for the transfer'),
+        actions: [
+          ...ref.read(payeesProvider).map(
+                (payee) => CupertinoActionSheetAction(
+                  onPressed: () {
+                    setState(() {
+                      if (isFromPayee) {
+                        _fromPayee = payee;
+                      } else {
+                        _toPayee = payee;
+                      }
+                    });
+                    Navigator.pop(context);
+                  },
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(payee.name),
+                      if ((isFromPayee && payee == _fromPayee) || 
+                          (!isFromPayee && payee == _toPayee))
+                        const Icon(
+                          CupertinoIcons.check_mark,
+                          color: CupertinoColors.activeBlue,
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+        ],
+        cancelButton: CupertinoActionSheetAction(
+          isDestructiveAction: true,
+          onPressed: () {
+            Navigator.pop(context);
+          },
+          child: const Text('Cancel'),
+        ),
+      ),
+    );
   }
 
   void _saveTransaction() async {
@@ -81,8 +131,8 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
       date: DateTime.now(),
       currencyCode: ref.read(settingsProvider).currency,
       attachments: _attachments,
-      fromWallet: _fromWallet,
-      toWallet: _toWallet,
+      fromPayee: _fromPayee,
+      toPayee: _toPayee,
       type: TransactionType.transfer,
       isRepeat: _isRepeat,
       repeatFrequency: _isRepeat ? _repeatFrequency : null,
@@ -208,29 +258,49 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
                       children: [
                         // From
                         Expanded(
-                          child: Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: cardColor,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: borderColor),
-                            ),
-                            child: Row(
-                              children: [
-                                Text(
-                                  'From',
-                                  style: TextStyle(
-                                    fontSize: 17,
-                                    color: secondaryTextColor,
+                          child: CupertinoButton(
+                            padding: EdgeInsets.zero,
+                            onPressed: () => _showPayeeSelection(true),
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: cardColor,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: borderColor),
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'From',
+                                          style: TextStyle(
+                                            fontSize: 15,
+                                            color: secondaryTextColor,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          _fromPayee?.name ?? 'Bank',
+                                          style: TextStyle(
+                                            fontSize: 17,
+                                            color: textColor,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                ),
-                                const Spacer(),
-                                Icon(
-                                  CupertinoIcons.chevron_right,
-                                  color: secondaryTextColor,
-                                  size: 20,
-                                ),
-                              ],
+                                  Icon(
+                                    CupertinoIcons.chevron_right,
+                                    color: secondaryTextColor,
+                                    size: 20,
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
@@ -253,29 +323,51 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
                         ),
                         // To
                         Expanded(
-                          child: Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: cardColor,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: borderColor),
-                            ),
-                            child: Row(
-                              children: [
-                                Text(
-                                  'To',
-                                  style: TextStyle(
-                                    fontSize: 17,
-                                    color: secondaryTextColor,
+                          child: CupertinoButton(
+                            padding: EdgeInsets.zero,
+                            onPressed: () => _showPayeeSelection(false),
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: cardColor,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: borderColor),
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'To',
+                                          style: TextStyle(
+                                            fontSize: 15,
+                                            color: secondaryTextColor,
+                                          ),
+                                        ),
+                                        if (_toPayee != null) ...[
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            _toPayee!.name,
+                                            style: TextStyle(
+                                              fontSize: 17,
+                                              color: textColor,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
+                                      ],
+                                    ),
                                   ),
-                                ),
-                                const Spacer(),
-                                Icon(
-                                  CupertinoIcons.chevron_right,
-                                  color: secondaryTextColor,
-                                  size: 20,
-                                ),
-                              ],
+                                  Icon(
+                                    CupertinoIcons.chevron_right,
+                                    color: secondaryTextColor,
+                                    size: 20,
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),

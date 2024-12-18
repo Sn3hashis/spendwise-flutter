@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' show Colors;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:io';
+import 'dart:async';
 import '../../../core/providers/theme_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/haptic_service.dart';
@@ -10,6 +11,8 @@ import '../models/transaction_type.dart';
 import '../../../core/utils/currency_helper.dart';
 import '../../../core/utils/date_helper.dart';
 import '../widgets/attachment_viewer.dart';
+import '../providers/transactions_provider.dart';
+import '../screens/base_transaction_screen.dart';
 import 'package:path/path.dart' as path;
 
 class TransactionDetailsScreen extends ConsumerWidget {
@@ -20,7 +23,7 @@ class TransactionDetailsScreen extends ConsumerWidget {
     required this.transaction,
   });
 
-  Widget _buildInfoRow(bool isDarkMode) {
+  Widget _buildInfoRow(bool isDarkMode, Transaction transaction) {
     return Column(
       children: [
         Row(
@@ -182,7 +185,7 @@ class TransactionDetailsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildAttachments(BuildContext context, bool isDarkMode) {
+  Widget _buildAttachments(BuildContext context, bool isDarkMode, Transaction transaction) {
     if (transaction.attachments.isEmpty) return const SizedBox.shrink();
 
     return Column(
@@ -223,11 +226,65 @@ class TransactionDetailsScreen extends ConsumerWidget {
     );
   }
 
+  void _showDeletedMessage(BuildContext context) {
+    // Show dialog without barrier dismissible
+    final dialog = showCupertinoDialog(
+      context: context,
+      barrierDismissible: false,
+      useRootNavigator: true,
+      builder: (dialogContext) => const CupertinoAlertDialog(
+        title: Text('Success'),
+        content: Text('Transaction deleted successfully'),
+      ),
+    );
+
+    // Auto dismiss after 0.5 seconds and navigate back
+    Timer(const Duration(milliseconds: 500), () {
+      if (context.mounted) {
+        Navigator.of(context, rootNavigator: true).pop(); // Close success message
+        Navigator.of(context).pop(); // Go back to previous screen
+      }
+    });
+  }
+
+  void _showDeleteConfirmation(BuildContext context, WidgetRef ref) {
+    showCupertinoDialog(
+      context: context,
+      barrierDismissible: false,
+      useRootNavigator: true,
+      builder: (dialogContext) => CupertinoAlertDialog(
+        title: const Text('Delete Transaction'),
+        content: const Text('Are you sure you want to delete this transaction? This action cannot be undone.'),
+        actions: [
+          CupertinoDialogAction(
+            isDestructiveAction: true,
+            onPressed: () async {
+              await HapticService.lightImpact(ref);
+              // Delete the transaction
+              ref.read(transactionsProvider.notifier).deleteTransaction(transaction.id);
+              if (dialogContext.mounted) {
+                Navigator.of(dialogContext, rootNavigator: true).pop(); // Close confirmation dialog
+                _showDeletedMessage(context); // Show success message
+              }
+            },
+            child: const Text('Delete'),
+          ),
+          CupertinoDialogAction(
+            child: const Text('Cancel'),
+            onPressed: () => Navigator.of(dialogContext, rootNavigator: true).pop(),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isDarkMode = ref.watch(themeProvider);
-    final currencySymbol = getCurrencySymbol(transaction.currencyCode);
-    final backgroundColor = switch (transaction.type) {
+    final updatedTransaction = ref.watch(transactionsProvider)
+        .firstWhere((t) => t.id == transaction.id, orElse: () => transaction);
+    final currencySymbol = getCurrencySymbol(updatedTransaction.currencyCode);
+    final backgroundColor = switch (updatedTransaction.type) {
       TransactionType.income => const Color(0xFF00C853),
       TransactionType.expense => const Color(0xFFFF3B30),
       TransactionType.transfer => const Color(0xFF007AFF),
@@ -263,10 +320,7 @@ class TransactionDetailsScreen extends ConsumerWidget {
                   ),
                   CupertinoButton(
                     padding: EdgeInsets.zero,
-                    onPressed: () async {
-                      await HapticService.lightImpact(ref);
-                      // TODO: Implement delete functionality
-                    },
+                    onPressed: () => _showDeleteConfirmation(context, ref),
                     child: const Icon(
                       CupertinoIcons.trash,
                       color: CupertinoColors.white,
@@ -282,7 +336,7 @@ class TransactionDetailsScreen extends ConsumerWidget {
             child: Column(
               children: [
                 Text(
-                  '$currencySymbol${transaction.amount.abs()}',
+                  '$currencySymbol${updatedTransaction.amount.abs()}',
                   style: const TextStyle(
                     fontSize: 64,
                     fontWeight: FontWeight.bold,
@@ -291,7 +345,7 @@ class TransactionDetailsScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  transaction.description,
+                  updatedTransaction.description,
                   style: const TextStyle(
                     fontSize: 20,
                     color: CupertinoColors.white,
@@ -299,7 +353,7 @@ class TransactionDetailsScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  formatDateTime(transaction.date),
+                  formatDateTime(updatedTransaction.date),
                   style: TextStyle(
                     fontSize: 17,
                     color: CupertinoColors.white.withOpacity(0.8),
@@ -320,8 +374,8 @@ class TransactionDetailsScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildInfoRow(isDarkMode),
-                    if (transaction.description.isNotEmpty)
+                    _buildInfoRow(isDarkMode, updatedTransaction),
+                    if (updatedTransaction.description.isNotEmpty)
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -337,7 +391,7 @@ class TransactionDetailsScreen extends ConsumerWidget {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            transaction.description,
+                            updatedTransaction.description,
                             style: TextStyle(
                               fontSize: 17,
                               color: isDarkMode 
@@ -347,7 +401,7 @@ class TransactionDetailsScreen extends ConsumerWidget {
                           ),
                         ],
                       ),
-                    _buildAttachments(context, isDarkMode),
+                    _buildAttachments(context, isDarkMode, updatedTransaction),
                   ],
                 ),
               ),
@@ -366,8 +420,16 @@ class TransactionDetailsScreen extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(vertical: 16),
               borderRadius: BorderRadius.circular(30),
               color: backgroundColor,
-              onPressed: () {
-                // TODO: Navigate to edit screen
+              onPressed: () async {
+                await Navigator.push(
+                  context,
+                  CupertinoPageRoute(
+                    builder: (context) => BaseTransactionScreen(
+                      type: updatedTransaction.type,
+                      transaction: updatedTransaction,
+                    ),
+                  ),
+                );
               },
               child: const Center(
                 child: Text(

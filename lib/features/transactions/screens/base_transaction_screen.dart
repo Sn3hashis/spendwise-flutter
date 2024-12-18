@@ -19,6 +19,9 @@ import '../models/repeat_frequency.dart';
 import '../models/transaction_type.dart';
 import '../widgets/category_selection_sheet.dart';
 import '../../categories/providers/categories_provider.dart';
+import 'dart:async';
+import '../../payees/models/payee_model.dart';
+import '../../payees/providers/payees_provider.dart';
 
 class AttachmentPreview extends StatelessWidget {
   final String filePath;
@@ -126,10 +129,12 @@ class AttachmentPreview extends StatelessWidget {
 
 class BaseTransactionScreen extends ConsumerStatefulWidget {
   final TransactionType type;
+  final Transaction? transaction;
 
   const BaseTransactionScreen({
     super.key,
     required this.type,
+    this.transaction,
   });
 
   @override
@@ -145,6 +150,9 @@ class _BaseTransactionScreenState extends ConsumerState<BaseTransactionScreen> {
   RepeatFrequency _repeatFrequency = RepeatFrequency.monthly;
   DateTime? _repeatEndDate;
   Category? _selectedCategory;
+  bool _showCategoryMessage = false;
+  Timer? _messageTimer;
+  Payee? _selectedPayee;
 
   static const _padding = EdgeInsets.all(24);
   static const _spacing = SizedBox(height: 16);
@@ -154,12 +162,33 @@ class _BaseTransactionScreenState extends ConsumerState<BaseTransactionScreen> {
   void initState() {
     super.initState();
     _amountController.addListener(_validateInputs);
+    if (widget.transaction != null) {
+      _amountController.text = widget.transaction!.amount.abs().toString();
+      _descriptionController.text = widget.transaction!.description;
+      _selectedCategory = widget.transaction!.category;
+      _attachments = List.from(widget.transaction!.attachments);
+      _isRepeat = widget.transaction!.isRepeat;
+      _repeatFrequency = widget.transaction!.repeatFrequency ?? RepeatFrequency.monthly;
+      _repeatEndDate = widget.transaction!.repeatEndDate;
+      
+      if (widget.transaction!.payeeId != null) {
+        final payees = ref.read(payeesProvider);
+        try {
+          _selectedPayee = payees.firstWhere(
+            (p) => p.id == widget.transaction!.payeeId,
+          );
+        } catch (e) {
+          debugPrint('Payee not found: ${widget.transaction!.payeeId}');
+        }
+      }
+    }
   }
 
   @override
   void dispose() {
     _amountController.dispose();
     _descriptionController.dispose();
+    _messageTimer?.cancel();
     super.dispose();
   }
 
@@ -201,108 +230,152 @@ class _BaseTransactionScreenState extends ConsumerState<BaseTransactionScreen> {
     final amount = double.parse(_amountController.text);
     
     final transaction = Transaction(
-      id: DateTime.now().toString(),
+      id: widget.transaction?.id ?? DateTime.now().toString(),
       amount: widget.type == TransactionType.expense ? -amount : amount,
       description: _descriptionController.text,
       category: _selectedCategory!,
-      date: DateTime.now(),
+      date: widget.transaction?.date ?? DateTime.now(),
       currencyCode: ref.read(settingsProvider).currency,
       attachments: _attachments,
       type: widget.type,
       isRepeat: _isRepeat,
       repeatFrequency: _isRepeat ? _repeatFrequency : null,
       repeatEndDate: _repeatEndDate,
+      payeeId: _selectedPayee?.id,
     );
 
     if (mounted) {
-      ref.read(transactionsProvider.notifier).addTransaction(transaction);
+      if (widget.transaction != null) {
+        ref.read(transactionsProvider.notifier).updateTransaction(transaction);
+      } else {
+        ref.read(transactionsProvider.notifier).addTransaction(transaction);
+      }
       Navigator.pop(context);
     }
   }
 
-  Widget _buildCategorySelector(bool isDarkMode) {
-    return Container(
-      decoration: BoxDecoration(
-        color: isDarkMode ? AppTheme.cardDark : AppTheme.cardLight,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isDarkMode 
-              ? const Color(0xFF2C2C2E) 
-              : const Color(0xFFE5E5EA),
-        ),
-      ),
-      child: CupertinoButton(
-        padding: const EdgeInsets.all(16),
-        onPressed: () async {
-          final categories = ref.read(categoriesProvider).where(
-            (cat) => cat.type == (widget.type == TransactionType.income 
-                ? CategoryType.income 
-                : CategoryType.expense)
-          ).toList();
+  void _showTemporaryMessage() {
+    setState(() {
+      _showCategoryMessage = true;
+    });
 
-          await showCupertinoModalPopup(
-            context: context,
-            useRootNavigator: true,
-            barrierDismissible: true,
-            builder: (BuildContext context) => CategorySelectionSheet(
-              categories: categories,
-              selectedCategory: _selectedCategory,
-              onCategorySelected: (category) {
-                if (mounted) {
-                  setState(() {
-                    _selectedCategory = category;
-                  });
-                }
-              },
-            ),
-          );
-        },
-        child: Row(
-          children: [
-            if (_selectedCategory != null) ...[
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: _selectedCategory!.color.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  _selectedCategory!.icon,
-                  color: _selectedCategory!.color,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                _selectedCategory!.name,
-                style: TextStyle(
-                  fontSize: 17,
-                  color: isDarkMode 
-                      ? CupertinoColors.white 
-                      : CupertinoColors.black,
-                ),
-              ),
-            ] else
-              Text(
-                'Select Category',
-                style: TextStyle(
-                  fontSize: 17,
-                  color: isDarkMode 
-                      ? CupertinoColors.systemGrey 
-                      : CupertinoColors.systemGrey2,
-                ),
-              ),
-            const Spacer(),
-            Icon(
-              CupertinoIcons.chevron_right,
+    _messageTimer?.cancel();
+    _messageTimer = Timer(const Duration(seconds: 2), () {
+      if (mounted) {
+        setState(() {
+          _showCategoryMessage = false;
+        });
+      }
+    });
+  }
+
+  Widget _buildCategorySelector(bool isDarkMode) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            color: isDarkMode ? AppTheme.cardDark : AppTheme.cardLight,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
               color: isDarkMode 
-                  ? CupertinoColors.systemGrey 
-                  : CupertinoColors.systemGrey2,
-              size: 20,
+                  ? const Color(0xFF2C2C2E) 
+                  : const Color(0xFFE5E5EA),
             ),
-          ],
+          ),
+          child: CupertinoButton(
+            padding: const EdgeInsets.all(16),
+            onPressed: widget.transaction != null 
+                ? () => _showTemporaryMessage() 
+                : () async {
+                    final categories = ref.read(categoriesProvider).where(
+                      (cat) => cat.type == (widget.type == TransactionType.income 
+                          ? CategoryType.income 
+                          : CategoryType.expense)
+                    ).toList();
+
+                    await showCupertinoModalPopup(
+                      context: context,
+                      useRootNavigator: true,
+                      barrierDismissible: true,
+                      builder: (BuildContext context) => CategorySelectionSheet(
+                        categories: categories,
+                        selectedCategory: _selectedCategory,
+                        onCategorySelected: (category) {
+                          if (mounted) {
+                            setState(() {
+                              _selectedCategory = category;
+                            });
+                          }
+                        },
+                      ),
+                    );
+                  },
+            child: Row(
+              children: [
+                if (_selectedCategory != null) ...[
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: _selectedCategory!.color.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      _selectedCategory!.icon,
+                      color: _selectedCategory!.color,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    _selectedCategory!.name,
+                    style: TextStyle(
+                      fontSize: 17,
+                      color: widget.transaction != null 
+                          ? (isDarkMode 
+                              ? CupertinoColors.white.withOpacity(0.6) 
+                              : CupertinoColors.black.withOpacity(0.6))
+                          : (isDarkMode 
+                              ? CupertinoColors.white 
+                              : CupertinoColors.black),
+                    ),
+                  ),
+                ] else
+                  Text(
+                    'Select Category',
+                    style: TextStyle(
+                      fontSize: 17,
+                      color: isDarkMode 
+                          ? CupertinoColors.systemGrey 
+                          : CupertinoColors.systemGrey2,
+                    ),
+                  ),
+                const Spacer(),
+                if (widget.transaction == null) 
+                  Icon(
+                    CupertinoIcons.chevron_right,
+                    color: isDarkMode 
+                        ? CupertinoColors.systemGrey 
+                        : CupertinoColors.systemGrey2,
+                    size: 20,
+                  ),
+              ],
+            ),
+          ),
         ),
-      ),
+        if (_showCategoryMessage)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              'Category change is not allowed. Please delete this transaction and add a new one.',
+              style: TextStyle(
+                fontSize: 13,
+                color: CupertinoColors.systemRed,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ),
+      ],
     );
   }
 
@@ -357,6 +430,111 @@ class _BaseTransactionScreenState extends ConsumerState<BaseTransactionScreen> {
               color: isDarkMode 
                   ? CupertinoColors.systemGrey 
                   : CupertinoColors.systemGrey2,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPayeeSelector(bool isDarkMode) {
+    return Container(
+      decoration: BoxDecoration(
+        color: isDarkMode ? AppTheme.cardDark : AppTheme.cardLight,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isDarkMode 
+              ? const Color(0xFF2C2C2E) 
+              : const Color(0xFFE5E5EA),
+        ),
+      ),
+      child: CupertinoButton(
+        padding: const EdgeInsets.all(16),
+        onPressed: () async {
+          final payees = ref.read(payeesProvider);
+          
+          await showCupertinoModalPopup(
+            context: context,
+            useRootNavigator: true,
+            barrierDismissible: true,
+            builder: (BuildContext context) => CupertinoActionSheet(
+              title: const Text('Select Payee'),
+              message: const Text('Choose a payee for this transaction'),
+              actions: [
+                ...payees.map(
+                  (payee) => CupertinoActionSheetAction(
+                    onPressed: () {
+                      setState(() {
+                        _selectedPayee = payee;
+                      });
+                      Navigator.pop(context);
+                    },
+                    child: Text(payee.name),
+                  ),
+                ),
+              ],
+              cancelButton: CupertinoActionSheetAction(
+                isDestructiveAction: true,
+                onPressed: () {
+                  setState(() {
+                    _selectedPayee = null;
+                  });
+                  Navigator.pop(context);
+                },
+                child: const Text('Clear Selection'),
+              ),
+            ),
+          );
+        },
+        child: Row(
+          children: [
+            if (_selectedPayee != null) ...[
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isDarkMode 
+                      ? CupertinoColors.systemGrey6.darkColor 
+                      : CupertinoColors.systemGrey6,
+                ),
+                child: Center(
+                  child: Text(
+                    _selectedPayee!.name.substring(0, 1).toUpperCase(),
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                _selectedPayee!.name,
+                style: TextStyle(
+                  fontSize: 17,
+                  color: isDarkMode 
+                      ? CupertinoColors.white 
+                      : CupertinoColors.black,
+                ),
+              ),
+            ] else
+              Text(
+                'Select Payee',
+                style: TextStyle(
+                  fontSize: 17,
+                  color: isDarkMode 
+                      ? CupertinoColors.systemGrey 
+                      : CupertinoColors.systemGrey2,
+                ),
+              ),
+            const Spacer(),
+            Icon(
+              CupertinoIcons.chevron_right,
+              color: isDarkMode 
+                  ? CupertinoColors.systemGrey 
+                  : CupertinoColors.systemGrey2,
+              size: 20,
             ),
           ],
         ),
@@ -683,6 +861,8 @@ class _BaseTransactionScreenState extends ConsumerState<BaseTransactionScreen> {
           _buildDescriptionField(isDarkMode),
           _spacing,
           _buildWalletSelector(isDarkMode),
+          _spacing,
+          _buildPayeeSelector(isDarkMode),
           _spacing,
           RepaintBoundary(child: _buildAttachmentSection(isDarkMode)),
           _largeSpacing,

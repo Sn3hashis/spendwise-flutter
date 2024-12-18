@@ -62,6 +62,17 @@ class TransactionsNotifier extends StateNotifier<List<Transaction>> {
     state = updatedTransactions;
     _saveTransactions(updatedTransactions);
   }
+
+  void updateTransaction(Transaction updatedTransaction) {
+    final updatedTransactions = state.map((transaction) => 
+      transaction.id == updatedTransaction.id 
+          ? updatedTransaction 
+          : transaction
+    ).toList();
+    
+    state = updatedTransactions;
+    _saveTransactions(updatedTransactions);
+  }
 }
 
 final transactionsProvider = StateNotifierProvider<TransactionsNotifier, List<Transaction>>((ref) {

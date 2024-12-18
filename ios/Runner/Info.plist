@@ -51,5 +51,9 @@
 	<string>We need access to photo library to attach images to transactions</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>We need access to microphone when recording videos</string>
+	<key>NSContactsUsageDescription</key>
+	<string>This app requires contacts access to select payees from your address book.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>This app requires photo library access to set payee profile pictures.</string>
 </dict>
 </plist>
