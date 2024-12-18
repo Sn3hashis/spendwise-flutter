@@ -112,16 +112,23 @@ class PayeeTransactionsScreen extends ConsumerWidget {
     final isDarkMode = ref.watch(themeProvider);
     final allTransactions = ref.watch(transactionsProvider);
     
-    // Filter transactions for this payee
-    final payeeTransactions = allTransactions
-        .where((transaction) => transaction.payeeId == payee.id)
-        .toList();
+    // Filter transactions for this payee (including both fromPayee and toPayee)
+    final payeeTransactions = allTransactions.where((transaction) => 
+      transaction.fromPayee?.id == payee.id || 
+      transaction.toPayee?.id == payee.id ||
+      transaction.payeeId == payee.id
+    ).toList();
     
-    // Calculate total amount
-    final totalAmount = payeeTransactions.fold<double>(
-      0, 
-      (sum, transaction) => sum + transaction.amount
-    );
+    // Calculate total due (positive means payee owes you, negative means you owe payee)
+    final totalDue = payeeTransactions.fold<double>(0, (sum, transaction) {
+      if (transaction.toPayee?.id == payee.id) {
+        // Money sent to payee (you owe them less)
+        return sum - transaction.amount;
+      } else {
+        // Money received from payee (they owe you more)
+        return sum + transaction.amount;
+      }
+    });
 
     return CupertinoPageScaffold(
       backgroundColor: isDarkMode ? AppTheme.backgroundDark : AppTheme.backgroundLight,
@@ -148,7 +155,7 @@ class PayeeTransactionsScreen extends ConsumerWidget {
               child: Column(
                 children: [
                   Text(
-                    'Total Balance',
+                    'Total Due',
                     style: TextStyle(
                       fontSize: 15,
                       color: isDarkMode 
@@ -158,17 +165,17 @@ class PayeeTransactionsScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    '$currencySymbol${totalAmount.abs()}',
+                    '$currencySymbol${totalDue.abs()}',
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
-                      color: totalAmount < 0
+                      color: totalDue < 0
                           ? CupertinoColors.destructiveRed
                           : CupertinoColors.systemGreen,
                     ),
                   ),
                   Text(
-                    totalAmount < 0 ? 'You owe' : 'Owes you',
+                    totalDue < 0 ? 'You owe' : 'Owes you',
                     style: TextStyle(
                       fontSize: 13,
                       color: isDarkMode 
