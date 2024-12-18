@@ -2,7 +2,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../models/transaction_model.dart';
-import '../models/transaction_type.dart';
 import '../../categories/models/category_model.dart';
 import '../../../core/providers/currency_provider.dart';
 import '../../../core/models/currency_model.dart';

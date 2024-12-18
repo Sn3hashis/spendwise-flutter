@@ -3,11 +3,14 @@ import 'package:flutter/material.dart' show LinearProgressIndicator, AlwaysStopp
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/providers/theme_provider.dart';
+import '../../transactions/models/transaction_model.dart';
+import '../../transactions/providers/transactions_provider.dart';
 import 'package:intl/intl.dart';
 import 'create_budget_screen.dart';
 import '../providers/budget_provider.dart';
 import '../models/budget_model.dart';
 import '../../../core/providers/currency_provider.dart';
+import 'budget_transactions_screen.dart';
 
 class BudgetScreen extends ConsumerStatefulWidget {
   const BudgetScreen({super.key});
@@ -31,6 +34,7 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
     final isDarkMode = ref.watch(themeProvider);
     final monthName = DateFormat('MMMM').format(_selectedMonth);
     final budgets = ref.watch(budgetProvider);
+    final transactions = ref.watch(transactionsProvider);
 
     return CupertinoPageScaffold(
       backgroundColor: isDarkMode ? AppTheme.backgroundDark : AppTheme.backgroundLight,
@@ -290,9 +294,13 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
   }
 
   Widget _buildBudgetCard(Budget budget) {
-    final progress = budget.progress;
     final isDarkMode = ref.watch(themeProvider);
     final currency = ref.watch(currencyProvider);
+    final transactions = ref.watch(transactionsProvider);
+    
+    // Calculate spent amount for this budget
+    final spent = _calculateSpentAmount(budget, transactions);
+    final progress = spent / budget.amount;
 
     Color getProgressColor(double progress) {
       if (progress >= 1.0) return CupertinoColors.systemRed;
@@ -305,7 +313,7 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
         Navigator.push(
           context,
           CupertinoPageRoute(
-            builder: (context) => CreateBudgetScreen(budget: budget),
+            builder: (context) => BudgetTransactionsScreen(budget: budget),
           ),
         );
       },
@@ -369,7 +377,7 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
                       ),
                     ),
                     Text(
-                      'Spent: ${currency.symbol}${budget.spent.toStringAsFixed(2)}',
+                      'Spent: ${currency.symbol}${spent.toStringAsFixed(2)}',
                       style: TextStyle(
                         fontSize: 13,
                         color: isDarkMode 
@@ -413,6 +421,15 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
         ),
       ),
     );
+  }
+
+  double _calculateSpentAmount(Budget budget, List<Transaction> transactions) {
+    return transactions
+      .where((t) => 
+        t.category.id == budget.category.id && // Match by category
+        t.type == TransactionType.expense &&
+        budget.isDateInPeriod(t.date))
+      .fold(0.0, (sum, t) => sum + t.amount.abs());
   }
 }
 

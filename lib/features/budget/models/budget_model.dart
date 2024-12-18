@@ -58,6 +58,15 @@ class Budget {
       hasNotified: hasNotified ?? this.hasNotified,
     );
   }
+
+  bool isDateInPeriod(DateTime date) {
+    return date.isAfter(startDate) && date.isBefore(endDate.add(const Duration(days: 1)));
+  }
+
+  bool isActive() {
+    final now = DateTime.now();
+    return isDateInPeriod(now);
+  }
 }
 
 enum RecurringType {

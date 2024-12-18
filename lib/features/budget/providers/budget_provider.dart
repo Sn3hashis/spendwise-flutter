@@ -83,6 +83,20 @@ class BudgetNotifier extends StateNotifier<List<Budget>> {
       }
     }
   }
+
+  void updateBudgetSpent(String budgetId, double amount) {
+    final updatedBudgets = state.map((budget) {
+      if (budget.id == budgetId) {
+        return budget.copyWith(
+          spent: budget.spent + amount,
+        );
+      }
+      return budget;
+    }).toList();
+    
+    state = updatedBudgets;
+    _saveBudgets(updatedBudgets);
+  }
 }
 
 final budgetProvider = StateNotifierProvider<BudgetNotifier, List<Budget>>((ref) {

@@ -5,10 +5,10 @@ import '../../../core/theme/app_theme.dart';
 import '../widgets/transaction_list_item.dart';
 import '../../settings/providers/settings_provider.dart';
 import '../models/transaction_filter.dart';
+import '../models/transaction_model.dart';
 import '../screens/filter_screen.dart';
 import '../widgets/date_range_selector.dart';
 import '../../../core/services/haptic_service.dart';
-import '../models/transaction_model.dart';
 import '../../categories/providers/categories_provider.dart';
 import '../providers/transactions_provider.dart';
 import '../providers/transaction_filter_provider.dart';
@@ -76,6 +76,13 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             return a.amount.abs().compareTo(b.amount.abs());
         }
       });
+  }
+
+  Transaction _updateTransactionCurrency(Transaction transaction) {
+    final currentCurrency = ref.watch(currencyProvider);
+    return transaction.copyWith(
+      currencyCode: currentCurrency.code,
+    );
   }
 
   @override
@@ -213,9 +220,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                       itemBuilder: (context, index) {
                         final transaction = filteredTransactions[index];
                         return TransactionListItem(
-                          transaction: transaction.copyWith(
-                            currencyCode: currentCurrency,
-                          ),
+                          transaction: _updateTransactionCurrency(transaction),
                         );
                       },
                     ),
