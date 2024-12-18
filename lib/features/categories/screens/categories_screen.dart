@@ -113,7 +113,7 @@ class CategoriesScreen extends ConsumerWidget {
       onPressed: () {
         if (filterType != null) {
           Navigator.pop(context, category);
-        } else {
+        } else if (category.isCustom) {
           Navigator.push(
             context,
             CupertinoPageRoute(

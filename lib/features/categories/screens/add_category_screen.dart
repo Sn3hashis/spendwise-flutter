@@ -28,17 +28,29 @@ class _AddCategoryScreenState extends ConsumerState<AddCategoryScreen> {
 
   final List<IconData> _icons = [
     CupertinoIcons.money_dollar,
-    CupertinoIcons.cart,
-    CupertinoIcons.shopping_cart,
+    CupertinoIcons.cart_fill,
     CupertinoIcons.car_detailed,
-    CupertinoIcons.house,
-    CupertinoIcons.gift,
-    CupertinoIcons.game_controller,
-    CupertinoIcons.heart,
-    CupertinoIcons.book,
+    CupertinoIcons.house_fill,
+    CupertinoIcons.gift_fill,
+    CupertinoIcons.gamecontroller_fill,
+    CupertinoIcons.heart_fill,
+    CupertinoIcons.book_fill,
     CupertinoIcons.bus,
     CupertinoIcons.airplane,
-    CupertinoIcons.paw,
+    CupertinoIcons.paw_solid,
+    CupertinoIcons.bag_fill,
+    CupertinoIcons.creditcard_fill,
+    CupertinoIcons.ticket_fill,
+    CupertinoIcons.cart_badge_plus,
+    CupertinoIcons.phone_fill,
+    CupertinoIcons.tv_fill,
+    CupertinoIcons.cloud_fill,
+    CupertinoIcons.music_note,
+    CupertinoIcons.scissors,
+    CupertinoIcons.briefcase_fill,
+    CupertinoIcons.building_2_fill,
+    CupertinoIcons.bed_double_fill,
+    CupertinoIcons.hammer_fill,
   ];
 
   final List<Color> _colors = [
@@ -56,6 +68,9 @@ class _AddCategoryScreenState extends ConsumerState<AddCategoryScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.category != null && !widget.category!.isCustom) {
+      Navigator.pop(context);
+    }
     _nameController = TextEditingController(text: widget.category?.name);
     _descriptionController = TextEditingController(text: widget.category?.description);
     _selectedType = widget.category?.type ?? CategoryType.expense;
