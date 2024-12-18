@@ -5,6 +5,7 @@ import '../../../core/theme/app_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/theme_provider.dart';
 import '../../../core/widgets/haptic_feedback_wrapper.dart';
+import '../../../core/providers/currency_provider.dart';
 
 class CurrencySelectorScreen extends ConsumerWidget {
   final String selectedCurrency;
@@ -89,7 +90,8 @@ class CurrencySelectorScreen extends ConsumerWidget {
                         final (symbol, code, name) = currencies[index];
                         final isSelected = code == selectedCurrency;
                         return HapticFeedbackWrapper(
-                          onPressed: () {
+                          onPressed: () async {
+                            await ref.read(currencyProvider.notifier).setCurrency(code);
                             Navigator.pop(context, code);
                           },
                           child: Container(

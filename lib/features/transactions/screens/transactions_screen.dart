@@ -12,6 +12,7 @@ import '../models/transaction_model.dart';
 import '../../categories/providers/categories_provider.dart';
 import '../providers/transactions_provider.dart';
 import '../providers/transaction_filter_provider.dart';
+import '../../../core/providers/currency_provider.dart';
 
 class TransactionsScreen extends ConsumerStatefulWidget {
   const TransactionsScreen({super.key});
@@ -80,7 +81,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = ref.watch(themeProvider);
-    final settings = ref.watch(settingsProvider);
+    final currentCurrency = ref.watch(currencyProvider);
     final transactions = ref.watch(transactionsProvider);
     
     // Apply filters to transactions
@@ -212,7 +213,9 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                       itemBuilder: (context, index) {
                         final transaction = filteredTransactions[index];
                         return TransactionListItem(
-                          transaction: transaction,
+                          transaction: transaction.copyWith(
+                            currencyCode: currentCurrency,
+                          ),
                         );
                       },
                     ),

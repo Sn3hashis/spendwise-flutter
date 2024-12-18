@@ -10,6 +10,7 @@ import '../../../features/transactions/providers/transactions_provider.dart';
 import '../../../features/transactions/widgets/transaction_list_item.dart';
 import '../../../core/utils/currency_helper.dart';
 import '../../../features/settings/providers/settings_provider.dart';
+import '../../../core/providers/currency_provider.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -175,6 +176,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = ref.watch(themeProvider);
+    final currentCurrency = ref.watch(currencyProvider);
     final size = MediaQuery.of(context).size;
     final transactions = ref.watch(transactionsProvider);
     final recentTransactions = transactions.take(5).toList(); // Show last 5 transactions
@@ -257,7 +259,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              '${getCurrencySymbol(ref.watch(settingsProvider).currency)}9,400',
+                              '${getCurrencySymbol(currentCurrency)}9,400',
                               style: TextStyle(
                                 fontSize: 40,
                                 fontWeight: FontWeight.bold,
@@ -305,7 +307,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                           ),
                                         ),
                                         Text(
-                                          '${getCurrencySymbol(ref.watch(settingsProvider).currency)}5,000',
+                                          '${getCurrencySymbol(currentCurrency)}5,000',
                                           style: const TextStyle(
                                             color: CupertinoColors.white,
                                             fontSize: 20,
@@ -351,7 +353,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                           ),
                                         ),
                                         Text(
-                                          '${getCurrencySymbol(ref.watch(settingsProvider).currency)}1,200',
+                                          '${getCurrencySymbol(currentCurrency)}1,200',
                                           style: const TextStyle(
                                             color: CupertinoColors.white,
                                             fontSize: 20,
