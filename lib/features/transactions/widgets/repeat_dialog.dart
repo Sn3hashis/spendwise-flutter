@@ -3,12 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/providers/theme_provider.dart';
 import '../../../core/services/haptic_service.dart';
-import '../models/repeat_frequency.dart';
+import '../models/transaction_model.dart';
 
 class RepeatDialog extends ConsumerStatefulWidget {
   final RepeatFrequency frequency;
   final DateTime? endDate;
-  final Function(RepeatFrequency, DateTime?) onSave;
+  final Function(RepeatFrequency frequency, DateTime? endDate) onSave;
 
   const RepeatDialog({
     super.key,
@@ -22,14 +22,14 @@ class RepeatDialog extends ConsumerStatefulWidget {
 }
 
 class _RepeatDialogState extends ConsumerState<RepeatDialog> {
-  late RepeatFrequency selectedFrequency;
-  DateTime? selectedEndDate;
+  late RepeatFrequency _frequency;
+  DateTime? _endDate;
 
   @override
   void initState() {
     super.initState();
-    selectedFrequency = widget.frequency;
-    selectedEndDate = widget.endDate;
+    _frequency = widget.frequency;
+    _endDate = widget.endDate;
   }
 
   @override
@@ -55,7 +55,7 @@ class _RepeatDialogState extends ConsumerState<RepeatDialog> {
                   onPressed: () async {
                     await HapticService.lightImpact(ref);
                     
-                    RepeatFrequency tempFrequency = selectedFrequency;
+                    RepeatFrequency tempFrequency = _frequency;
                     showCupertinoModalPopup(
                       context: context,
                       builder: (BuildContext context) {
@@ -90,7 +90,7 @@ class _RepeatDialogState extends ConsumerState<RepeatDialog> {
                                       onPressed: () async {
                                         await HapticService.lightImpact(ref);
                                         setState(() {
-                                          selectedFrequency = tempFrequency;
+                                          _frequency = tempFrequency;
                                         });
                                         Navigator.pop(context);
                                       },
@@ -103,7 +103,7 @@ class _RepeatDialogState extends ConsumerState<RepeatDialog> {
                                 child: CupertinoPicker(
                                   itemExtent: 45,
                                   scrollController: FixedExtentScrollController(
-                                    initialItem: RepeatFrequency.values.indexOf(selectedFrequency),
+                                    initialItem: RepeatFrequency.values.indexOf(_frequency),
                                   ),
                                   onSelectedItemChanged: (index) async {
                                     await HapticService.selectionClick(ref);
@@ -139,8 +139,8 @@ class _RepeatDialogState extends ConsumerState<RepeatDialog> {
                         ),
                         const Spacer(),
                         Text(
-                          selectedFrequency.name.substring(0, 1).toUpperCase() +
-                          selectedFrequency.name.substring(1),
+                          _frequency.name.substring(0, 1).toUpperCase() +
+                          _frequency.name.substring(1),
                           style: TextStyle(
                             color: isDarkMode 
                                 ? CupertinoColors.systemGrey 
@@ -173,7 +173,7 @@ class _RepeatDialogState extends ConsumerState<RepeatDialog> {
                     
                     final now = DateTime.now();
                     final currentDate = DateTime(now.year, now.month, now.day);
-                    DateTime tempEndDate = selectedEndDate ?? currentDate;
+                    DateTime tempEndDate = _endDate ?? currentDate;
 
                     showCupertinoModalPopup(
                       context: context,
@@ -209,7 +209,7 @@ class _RepeatDialogState extends ConsumerState<RepeatDialog> {
                                       onPressed: () async {
                                         await HapticService.lightImpact(ref);
                                         setState(() {
-                                          selectedEndDate = tempEndDate;
+                                          _endDate = tempEndDate;
                                         });
                                         Navigator.pop(context);
                                       },
@@ -248,7 +248,7 @@ class _RepeatDialogState extends ConsumerState<RepeatDialog> {
                         ),
                         const Spacer(),
                         Text(
-                          selectedEndDate?.toString().split(' ')[0] ?? 'Select Date',
+                          _endDate?.toString().split(' ')[0] ?? 'Select Date',
                           style: TextStyle(
                             color: isDarkMode 
                                 ? CupertinoColors.systemGrey 
@@ -270,7 +270,7 @@ class _RepeatDialogState extends ConsumerState<RepeatDialog> {
             ),
           ),
           CupertinoButton(
-            onPressed: () => widget.onSave(selectedFrequency, selectedEndDate),
+            onPressed: () => widget.onSave(_frequency, _endDate),
             child: const Text('Save'),
           ),
         ],

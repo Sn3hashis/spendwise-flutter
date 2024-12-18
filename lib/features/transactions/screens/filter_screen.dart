@@ -4,7 +4,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/providers/theme_provider.dart';
 import '../../../core/services/haptic_service.dart';
 import '../models/transaction_filter.dart';
-import '../models/transaction_type.dart';
+import '../models/transaction_model.dart';
 import '../widgets/category_selection_sheet.dart';
 import '../../categories/providers/categories_provider.dart';
 import '../../categories/models/category_model.dart';
@@ -109,7 +109,7 @@ class _FilterScreenState extends ConsumerState<FilterScreen> {
                     _selectedCategories.add(category);
                   }
                   _filter = _filter.copyWith(
-                    categories: _selectedCategories.map((c) => c.id).toSet(),
+                    categories: _selectedCategories.map((c) => c.id).toList(),
                   );
                 });
               },
@@ -123,7 +123,7 @@ class _FilterScreenState extends ConsumerState<FilterScreen> {
                 _selectedCategories.add(result);
               }
               _filter = _filter.copyWith(
-                categories: _selectedCategories.map((c) => c.id).toSet(),
+                categories: _selectedCategories.map((c) => c.id).toList(),
               );
             });
           }
@@ -244,7 +244,7 @@ class _FilterScreenState extends ConsumerState<FilterScreen> {
                         onTap: () async {
                           await HapticService.lightImpact(ref);
                           setState(() {
-                            final newTypes = Set<TransactionType>.from(_filter.types);
+                            final newTypes = List<TransactionType>.from(_filter.types);
                             if (newTypes.contains(type)) {
                               newTypes.remove(type);
                             } else {

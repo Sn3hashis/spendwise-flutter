@@ -7,7 +7,6 @@ import '../../../core/providers/theme_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/haptic_service.dart';
 import '../models/transaction_model.dart';
-import '../models/transaction_type.dart';
 import '../../../core/utils/currency_helper.dart';
 import '../../../core/utils/date_helper.dart';
 import '../widgets/attachment_viewer.dart';
@@ -297,17 +296,24 @@ class TransactionDetailsScreen extends ConsumerWidget {
     );
   }
 
+  Color getBackgroundColor(TransactionType type) {
+    switch (type) {
+      case TransactionType.income:
+        return const Color(0xFF00C853);
+      case TransactionType.expense:
+        return const Color(0xFFFF3B30);
+      case TransactionType.transfer:
+        return const Color(0xFF007AFF);
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isDarkMode = ref.watch(themeProvider);
     final updatedTransaction = ref.watch(transactionsProvider)
         .firstWhere((t) => t.id == transaction.id, orElse: () => transaction);
     final currencySymbol = getCurrencySymbol(updatedTransaction.currencyCode);
-    final backgroundColor = switch (updatedTransaction.type) {
-      TransactionType.income => const Color(0xFF00C853),
-      TransactionType.expense => const Color(0xFFFF3B30),
-      TransactionType.transfer => const Color(0xFF007AFF),
-    };
+    final backgroundColor = getBackgroundColor(updatedTransaction.type);
 
     return CupertinoPageScaffold(
       backgroundColor: backgroundColor,

@@ -19,7 +19,7 @@ class TransactionListItem extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isDarkMode = ref.watch(themeProvider);
-    final currentCurrency = ref.watch(currencyProvider);
+    final currentCurrency = ref.watch(currencyProvider).code;
 
     // Format amount with current currency symbol
     final amountText = transaction.amount < 0 

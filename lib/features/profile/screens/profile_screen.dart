@@ -6,6 +6,7 @@ import '../../../core/services/haptic_service.dart';
 import '../../categories/screens/categories_screen.dart';
 import '../../settings/screens/settings_screen.dart';
 import '../../payees/screens/manage_payees_screen.dart';
+import '../../analytics/screens/analytics_screen.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -113,15 +114,6 @@ class ProfileScreen extends ConsumerWidget {
                   _buildMenuItem(
                     context: context,
                     ref: ref,
-                    icon: CupertinoIcons.arrow_down_doc,
-                    iconColor: AppTheme.iconColors['export']!,
-                    title: 'Export Data',
-                    isDarkMode: isDarkMode,
-                    onTap: () {},
-                  ),
-                  _buildMenuItem(
-                    context: context,
-                    ref: ref,
                     icon: CupertinoIcons.tag,
                     iconColor: AppTheme.iconColors['category']!,
                     title: 'Manage Category',
@@ -159,6 +151,22 @@ class ProfileScreen extends ConsumerWidget {
                     title: 'Lend Management',
                     isDarkMode: isDarkMode,
                     onTap: () {},
+                  ),
+                  _buildMenuItem(
+                    context: context,
+                    ref: ref,
+                    icon: CupertinoIcons.chart_bar_square,
+                    iconColor: AppTheme.iconColors['analytics'] ?? CupertinoColors.systemTeal,
+                    title: 'Analytics & Reports',
+                    isDarkMode: isDarkMode,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        CupertinoPageRoute(
+                          builder: (context) => const AnalyticsScreen(),
+                        ),
+                      );
+                    },
                   ),
                   _buildMenuItem(
                     context: context,

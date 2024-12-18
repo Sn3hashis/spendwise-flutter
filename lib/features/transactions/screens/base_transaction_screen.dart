@@ -10,18 +10,19 @@ import '../../../features/settings/providers/settings_provider.dart';
 import '../../../core/utils/currency_helper.dart';
 import '../../../core/services/attachment_service.dart';
 import '../../../features/categories/models/category_model.dart';
+import '../../budget/models/budget_model.dart';
 import 'dart:io';
 import '../../../features/transactions/widgets/repeat_dialog.dart';
 import '../../../features/categories/screens/categories_screen.dart';
-import '../../../features/transactions/models/transaction_model.dart';
-import '../../../features/transactions/providers/transactions_provider.dart';
-import '../models/repeat_frequency.dart';
-import '../models/transaction_type.dart';
+import '../models/transaction_model.dart';
+import '../providers/transactions_provider.dart';
 import '../widgets/category_selection_sheet.dart';
 import '../../categories/providers/categories_provider.dart';
 import 'dart:async';
 import '../../payees/models/payee_model.dart';
 import '../../payees/providers/payees_provider.dart';
+import '../../budget/providers/budget_provider.dart';
+import 'package:uuid/uuid.dart';
 
 class AttachmentPreview extends StatelessWidget {
   final String filePath;
@@ -201,19 +202,29 @@ class _BaseTransactionScreenState extends ConsumerState<BaseTransactionScreen> {
   }
 
   Color _getThemeColor() {
-    return switch (widget.type) {
-      TransactionType.income => const Color(0xFF00C853),
-      TransactionType.expense => const Color(0xFFFF3B30),
-      TransactionType.transfer => const Color(0xFF007AFF),
-    };
+    switch (widget.type) {
+      case TransactionType.income:
+        return const Color(0xFF00C853);
+      case TransactionType.expense:
+        return const Color(0xFFFF3B30);
+      case TransactionType.transfer:
+        return const Color(0xFF007AFF);
+      default:
+        return const Color(0xFF007AFF); // Default color
+    }
   }
 
   String _getTitle() {
-    return switch (widget.type) {
-      TransactionType.income => 'Income',
-      TransactionType.expense => 'Expense',
-      TransactionType.transfer => 'Transfer',
-    };
+    switch (widget.type) {
+      case TransactionType.income:
+        return 'Income';
+      case TransactionType.expense:
+        return 'Expense';
+      case TransactionType.transfer:
+        return 'Transfer';
+      default:
+        return 'Transaction'; // Default title
+    }
   }
 
   void _deleteAttachment(int index) {
@@ -228,28 +239,41 @@ class _BaseTransactionScreenState extends ConsumerState<BaseTransactionScreen> {
     await HapticService.lightImpact(ref);
 
     final amount = double.parse(_amountController.text);
+    final now = DateTime.now();
     
+    // Find matching budget for the category
+    final budgets = ref.read(budgetProvider);
+    Budget? matchingBudget;
+    try {
+      matchingBudget = budgets.firstWhere(
+        (budget) => 
+          budget.category.id == _selectedCategory!.id &&
+          budget.isActive() &&
+          budget.isDateInPeriod(now),
+      );
+    } catch (_) {
+      // No matching budget found
+      matchingBudget = null;
+    }
+
     final transaction = Transaction(
-      id: widget.transaction?.id ?? DateTime.now().toString(),
-      amount: widget.type == TransactionType.expense ? -amount : amount,
+      id: const Uuid().v4(),
       description: _descriptionController.text,
+      amount: widget.type == TransactionType.expense ? -amount.abs() : amount.abs(),
+      date: now,
       category: _selectedCategory!,
-      date: widget.transaction?.date ?? DateTime.now(),
-      currencyCode: ref.read(settingsProvider).currency,
-      attachments: _attachments,
+      budgetId: matchingBudget?.id,
       type: widget.type,
+      attachments: _attachments,
+      currencyCode: ref.read(settingsProvider).currency,
       isRepeat: _isRepeat,
       repeatFrequency: _isRepeat ? _repeatFrequency : null,
-      repeatEndDate: _repeatEndDate,
+      repeatEndDate: _isRepeat ? _repeatEndDate : null,
       payeeId: _selectedPayee?.id,
     );
 
     if (mounted) {
-      if (widget.transaction != null) {
-        ref.read(transactionsProvider.notifier).updateTransaction(transaction);
-      } else {
-        ref.read(transactionsProvider.notifier).addTransaction(transaction);
-      }
+      ref.read(transactionsProvider.notifier).addTransaction(transaction);
       Navigator.pop(context);
     }
   }
