@@ -3,12 +3,16 @@ import 'package:lottie/lottie.dart';
 import '../../../core/widgets/system_ui_wrapper.dart';
 import '../screens/login_screen.dart';
 import '../../main/screens/main_layout_screen.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/providers/theme_provider.dart';
+import '../../../core/widgets/haptic_feedback_wrapper.dart';
+import '../../../core/services/haptic_service.dart';
 
 enum PinEntryMode { setup, verify }
 
-class PinEntryScreen extends StatefulWidget {
+class PinEntryScreen extends ConsumerStatefulWidget {
   final PinEntryMode mode;
-  final String? setupConfirmPin; // Used during setup to confirm PIN
+  final String? setupConfirmPin;
 
   const PinEntryScreen({
     super.key,
@@ -17,15 +21,16 @@ class PinEntryScreen extends StatefulWidget {
   });
 
   @override
-  State<PinEntryScreen> createState() => _PinEntryScreenState();
+  ConsumerState<PinEntryScreen> createState() => _PinEntryScreenState();
 }
 
-class _PinEntryScreenState extends State<PinEntryScreen> {
+class _PinEntryScreenState extends ConsumerState<PinEntryScreen> {
   final int pinLength = 4;
   String currentPin = '';
   String? errorMessage;
 
-  void _onNumberPressed(String number) {
+  void _onNumberPressed(String number) async {
+    await HapticService.lightImpact(ref);
     if (currentPin.length < pinLength) {
       setState(() {
         currentPin += number;
@@ -38,7 +43,8 @@ class _PinEntryScreenState extends State<PinEntryScreen> {
     }
   }
 
-  void _onBackspacePressed() {
+  void _onBackspacePressed() async {
+    await HapticService.lightImpact(ref);
     if (currentPin.isNotEmpty) {
       setState(() {
         currentPin = currentPin.substring(0, currentPin.length - 1);
@@ -91,8 +97,7 @@ class _PinEntryScreenState extends State<PinEntryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDarkMode =
-        MediaQuery.platformBrightnessOf(context) == Brightness.dark;
+    final isDarkMode = ref.watch(themeProvider);
     final size = MediaQuery.of(context).size;
     final bottomPadding = MediaQuery.of(context).padding.bottom;
 
@@ -113,7 +118,8 @@ class _PinEntryScreenState extends State<PinEntryScreen> {
                       children: [
                         CupertinoButton(
                           padding: EdgeInsets.zero,
-                          onPressed: () {
+                          onPressed: () async {
+                            await HapticService.lightImpact(ref);
                             Navigator.of(context).pushReplacement(
                               CupertinoPageRoute(
                                 builder: (context) => const LoginScreen(),
@@ -227,7 +233,8 @@ class _PinEntryScreenState extends State<PinEntryScreen> {
                   CupertinoButton(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    onPressed: () {
+                    onPressed: () async {
+                      await HapticService.lightImpact(ref);
                       setState(() {
                         currentPin = '';
                         errorMessage = null;
@@ -286,7 +293,8 @@ class _PinEntryScreenState extends State<PinEntryScreen> {
                       padding: EdgeInsets.only(bottom: bottomPadding + 16),
                       child: CupertinoButton(
                         padding: const EdgeInsets.all(8),
-                        onPressed: () {
+                        onPressed: () async {
+                          await HapticService.lightImpact(ref);
                           // TODO: Implement forgot PIN logic
                         },
                         child: const Text(
@@ -305,16 +313,21 @@ class _PinEntryScreenState extends State<PinEntryScreen> {
   }
 
   Widget _buildNumberButton(String number) {
-    return SizedBox(
-      height: 55,
-      child: CupertinoButton(
-        padding: EdgeInsets.zero,
-        onPressed: () => _onNumberPressed(number),
-        child: Text(
-          number,
-          style: const TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.w400,
+    return HapticFeedbackWrapper(
+      onPressed: () {
+        _onNumberPressed(number);
+      },
+      child: Container(
+        height: 55,
+        child: CupertinoButton(
+          padding: EdgeInsets.zero,
+          onPressed: () => _onNumberPressed(number),
+          child: Text(
+            number,
+            style: const TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.w400,
+            ),
           ),
         ),
       ),
@@ -322,30 +335,40 @@ class _PinEntryScreenState extends State<PinEntryScreen> {
   }
 
   Widget _buildBackspaceButton() {
-    return SizedBox(
-      height: 55,
-      child: CupertinoButton(
-        padding: EdgeInsets.zero,
-        onPressed: _onBackspacePressed,
-        child: const Icon(
-          CupertinoIcons.delete_left,
-          size: 28,
+    return HapticFeedbackWrapper(
+      onPressed: () {
+        _onBackspacePressed();
+      },
+      child: Container(
+        height: 55,
+        child: CupertinoButton(
+          padding: EdgeInsets.zero,
+          onPressed: _onBackspacePressed,
+          child: const Icon(
+            CupertinoIcons.delete_left,
+            size: 28,
+          ),
         ),
       ),
     );
   }
 
   Widget _buildBiometricButton() {
-    return SizedBox(
-      height: 55,
-      child: CupertinoButton(
-        padding: EdgeInsets.zero,
-        onPressed: () {
-          // TODO: Implement biometric authentication
-        },
-        child: const Icon(
-          CupertinoIcons.flag_circle,
-          size: 28,
+    return HapticFeedbackWrapper(
+      onPressed: () {
+        // TODO: Implement biometric authentication
+      },
+      child: Container(
+        height: 55,
+        child: CupertinoButton(
+          padding: EdgeInsets.zero,
+          onPressed: () {
+            // TODO: Implement biometric authentication
+          },
+          child: const Icon(
+            CupertinoIcons.flag_circle,
+            size: 28,
+          ),
         ),
       ),
     );

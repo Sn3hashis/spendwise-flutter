@@ -4,6 +4,7 @@ import 'package:spendwise/features/onboarding/models/onboarding_item.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/widgets/system_ui_wrapper.dart';
+import '../../../core/widgets/haptic_feedback_wrapper.dart';
 import '../../auth/screens/login_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -75,10 +76,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     const SizedBox(height: 16),
-                    CupertinoButton(
-                      padding: EdgeInsets.zero,
-                      onPressed: _navigateToHome,
-                      child: const Text(
+                    HapticFeedbackWrapper(
+                      onPressed: () {
+                        _navigateToHome();
+                      },
+                      child: Text(
                         'Skip',
                         style: TextStyle(
                           fontSize: 16,
@@ -142,28 +144,29 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         strokeWidth: 3,
                       ),
                     ),
-                    Container(
-                      height: 60,
-                      width: 60,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: _getCircleColor(_currentPage),
-                      ),
-                      child: IconButton(
-                        icon: const Icon(
+                    HapticFeedbackWrapper(
+                      onPressed: () {
+                        if (_currentPage < onboardingItems.length - 1) {
+                          _pageController.nextPage(
+                            duration: const Duration(milliseconds: 300),
+                            curve: Curves.easeInOut,
+                          );
+                        } else {
+                          _navigateToHome();
+                        }
+                      },
+                      child: Container(
+                        height: 60,
+                        width: 60,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: _getCircleColor(_currentPage),
+                        ),
+                        child: Icon(
                           CupertinoIcons.arrow_right,
                           color: CupertinoColors.white,
+                          size: 28,
                         ),
-                        onPressed: () {
-                          if (_currentPage < onboardingItems.length - 1) {
-                            _pageController.nextPage(
-                              duration: const Duration(milliseconds: 300),
-                              curve: Curves.easeInOut,
-                            );
-                          } else {
-                            _navigateToHome();
-                          }
-                        },
                       ),
                     ),
                   ],

@@ -42,6 +42,10 @@ android {
         jvmTarget = '17'
     }
 
+    tasks.withType(JavaCompile) {
+        options.compilerArgs << '-Xlint:-options'
+    }
+
     sourceSets {
         main.java.srcDirs += 'src/main/kotlin'
     }

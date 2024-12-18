@@ -30,24 +30,28 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-
-  # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
-  cupertino_icons: ^1.0.8
+  flutter_riverpod: ^2.4.9
+  cupertino_icons: ^1.0.6
   animated_text_kit: ^4.2.2
   flutter_svg: ^2.0.10+1
-  lottie: ^3.0.0
+  lottie: ^3.3.0
   shared_preferences: ^2.2.2
-  fl_chart: ^0.65.0
+  fl_chart: ^0.69.2
   sliding_clipped_nav_bar: ^3.1.1
   curved_navigation_bar: ^1.0.6
-  intl: ^0.18.1
-  flutter_riverpod: ^2.6.1
+  intl: ^0.19.0
+  vibration: ^2.0.1
+  image_picker: ^1.0.7
+  file_picker: ^8.1.6
+  syncfusion_flutter_pdfviewer: ^28.1.33
+  flutter_contacts: ^1.1.7
+  path_provider: ^2.1.2
+  share_plus: ^7.2.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-
+  
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
   # activated in the `analysis_options.yaml` file located at the root of your
@@ -99,13 +103,8 @@ flutter:
 
   assets:
     - assets/images/
-    # - assets/images/track_expenses.svg
-    # - assets/images/budgeting.svg
-    # - assets/images/insights.svg
-    # - assets/images/google_logo.svg
     - assets/animations/
-    - assets/animations/currency.json
-    - assets/animations/language.json
+    
     
     
     

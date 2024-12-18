@@ -1,18 +1,26 @@
 import 'package:flutter/cupertino.dart';
 import 'package:lottie/lottie.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/providers/theme_provider.dart';
 import '../../../core/widgets/system_ui_wrapper.dart';
 import '../../../core/widgets/exit_dialog.dart';
 import 'email_sent_screen.dart';
 
-class ForgotPasswordScreen extends StatefulWidget {
+class ForgotPasswordScreen extends ConsumerStatefulWidget {
   const ForgotPasswordScreen({super.key});
 
   @override
-  State<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
+  ConsumerState<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
 }
 
-class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
+class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   final TextEditingController _emailController = TextEditingController();
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    super.dispose();
+  }
 
   Future<bool> _onWillPop() async {
     if (Navigator.of(context).canPop()) {
@@ -23,15 +31,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   }
 
   @override
-  void dispose() {
-    _emailController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final isDarkMode =
-        MediaQuery.platformBrightnessOf(context) == Brightness.dark;
+    final isDarkMode = ref.watch(themeProvider);
 
     return WillPopScope(
       onWillPop: _onWillPop,
