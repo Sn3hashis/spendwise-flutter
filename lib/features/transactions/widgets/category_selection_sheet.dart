@@ -1,19 +1,20 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'dart:ui' show PathMetric;
 import '../../../core/providers/theme_provider.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../categories/providers/categories_provider.dart';
 import '../../categories/models/category_model.dart';
-import '../models/transaction_type.dart';
 
 class CategorySelectionSheet extends ConsumerStatefulWidget {
-  final List<String> selectedCategories;
-  final List<TransactionType> transactionTypes;
+  final List<Category> categories;
+  final Category? selectedCategory;
+  final Function(Category) onCategorySelected;
 
   const CategorySelectionSheet({
     super.key,
-    required this.selectedCategories,
-    required this.transactionTypes,
+    required this.categories,
+    required this.selectedCategory,
+    required this.onCategorySelected,
   });
 
   @override
@@ -21,131 +22,266 @@ class CategorySelectionSheet extends ConsumerStatefulWidget {
 }
 
 class _CategorySelectionSheetState extends ConsumerState<CategorySelectionSheet> {
-  late Set<String> _selectedCategories;
+  late TextEditingController _searchController;
+  late List<Category> _filteredCategories;
 
   @override
   void initState() {
     super.initState();
-    _selectedCategories = widget.selectedCategories.toSet();
+    _searchController = TextEditingController();
+    _filteredCategories = widget.categories;
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _filterCategories(String query) {
+    setState(() {
+      _filteredCategories = widget.categories
+          .where((category) => 
+              category.name.toLowerCase().contains(query.toLowerCase()))
+          .toList();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final isDarkMode = ref.watch(themeProvider);
-    final categories = ref.watch(categoriesProvider).where((category) {
-      if (widget.transactionTypes.isEmpty) return true;
-      return widget.transactionTypes.contains(
-        switch (category.type) {
-          CategoryType.income => TransactionType.income,
-          CategoryType.expense => TransactionType.expense,
-          CategoryType.transfer => TransactionType.transfer,
-        }
-      );
-    }).toList();
 
     return Container(
       height: MediaQuery.of(context).size.height * 0.7,
       decoration: BoxDecoration(
-        color: isDarkMode ? AppTheme.backgroundDark : AppTheme.backgroundLight,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+        color: isDarkMode ? AppTheme.cardDark : AppTheme.cardLight,
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(20),
+        ),
       ),
       child: Column(
         children: [
+          // Handle bar
+          Container(
+            width: 40,
+            height: 4,
+            margin: const EdgeInsets.symmetric(vertical: 8),
+            decoration: BoxDecoration(
+              color: CupertinoColors.systemGrey4,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          
+          // Title
           Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                CupertinoButton(
-                  padding: EdgeInsets.zero,
-                  child: Text(
-                    'Reset',
-                    style: TextStyle(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Text(
+              'Select Category',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: isDarkMode ? CupertinoColors.white : CupertinoColors.black,
+              ),
+            ),
+          ),
+
+          // Search Box with dotted border
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 4), // Reduced bottom padding
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: isDarkMode 
+                      ? CupertinoColors.systemGrey 
+                      : CupertinoColors.systemGrey2,
+                  width: 1,
+                  style: BorderStyle.none,
+                ),
+              ),
+              child: Stack(
+                children: [
+                  // Dotted border
+                  CustomPaint(
+                    painter: DottedBorderPainter(
                       color: isDarkMode 
                           ? CupertinoColors.systemGrey 
                           : CupertinoColors.systemGrey2,
+                      borderRadius: 8,
+                    ),
+                    child: Container(
+                      width: double.infinity,
+                      height: 36, // Match CupertinoSearchTextField height
                     ),
                   ),
-                  onPressed: () {
-                    setState(() => _selectedCategories.clear());
-                  },
-                ),
-                const Text(
-                  'Select Categories',
-                  style: TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w600,
+                  CupertinoSearchTextField(
+                    controller: _searchController,
+                    placeholder: 'Search categories',
+                    onChanged: _filterCategories,
+                    style: TextStyle(
+                      color: isDarkMode ? CupertinoColors.white : CupertinoColors.black,
+                    ),
+                    backgroundColor: isDarkMode 
+                        ? CupertinoColors.systemGrey6.darkColor 
+                        : CupertinoColors.systemGrey6,
                   ),
-                ),
-                CupertinoButton(
-                  padding: EdgeInsets.zero,
-                  child: const Text('Done'),
-                  onPressed: () {
-                    Navigator.pop(context, _selectedCategories.toList());
-                  },
-                ),
-              ],
+                ],
+              ),
             ),
           ),
+          
+          // Categories List
           Expanded(
-            child: ListView.builder(
-              itemCount: categories.length,
-              itemBuilder: (context, index) {
-                final category = categories[index];
-                final isSelected = _selectedCategories.contains(category.id);
-
-                return CupertinoButton(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      if (isSelected) {
-                        _selectedCategories.remove(category.id);
-                      } else {
-                        _selectedCategories.add(category.id);
-                      }
-                    });
-                  },
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: category.color.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Icon(
-                          category.icon,
-                          color: category.color,
-                          size: 24,
-                        ),
+            child: _filteredCategories.isEmpty
+                ? Center(
+                    child: Text(
+                      'No categories found',
+                      style: TextStyle(
+                        color: isDarkMode 
+                            ? CupertinoColors.systemGrey 
+                            : CupertinoColors.systemGrey2,
                       ),
-                      const SizedBox(width: 12),
-                      Text(
-                        category.name,
-                        style: TextStyle(
-                          fontSize: 17,
-                          color: isDarkMode 
-                              ? CupertinoColors.white 
-                              : CupertinoColors.black,
+                    ),
+                  )
+                : ListView.builder(
+                    padding: EdgeInsets.zero, // Remove default padding
+                    itemCount: _filteredCategories.length,
+                    itemBuilder: (context, index) {
+                      final category = _filteredCategories[index];
+                      final isSelected = widget.selectedCategory?.id == category.id;
+                      
+                      return CupertinoButton(
+                        padding: EdgeInsets.zero,
+                        onPressed: () {
+                          widget.onCategorySelected(category);
+                          if (context.mounted) {
+                            Navigator.of(context, rootNavigator: true).pop();
+                          }
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            border: Border(
+                              bottom: BorderSide(
+                                color: CupertinoColors.systemGrey.withOpacity(0.2),
+                                width: 0.5,
+                              ),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: category.color.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Icon(
+                                  category.icon,
+                                  color: category.color,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  category.name,
+                                  style: TextStyle(
+                                    fontSize: 17,
+                                    color: isDarkMode 
+                                        ? CupertinoColors.white 
+                                        : CupertinoColors.black,
+                                  ),
+                                ),
+                              ),
+                              if (isSelected)
+                                const Icon(
+                                  CupertinoIcons.checkmark_alt,
+                                  color: CupertinoColors.systemBlue,
+                                  size: 20,
+                                ),
+                            ],
+                          ),
                         ),
-                      ),
-                      const Spacer(),
-                      if (isSelected)
-                        const Icon(
-                          CupertinoIcons.checkmark_alt,
-                          color: CupertinoColors.systemBlue,
-                        ),
-                    ],
+                      );
+                    },
                   ),
-                );
-              },
-            ),
           ),
         ],
       ),
     );
   }
+}
+
+// Add this custom painter for the dotted border
+class DottedBorderPainter extends CustomPainter {
+  final Color color;
+  final double borderRadius;
+
+  DottedBorderPainter({
+    required this.color,
+    required this.borderRadius,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1
+      ..style = PaintingStyle.stroke;
+
+    const dashWidth = 4;
+    const dashSpace = 4;
+    final width = size.width;
+    final height = size.height;
+
+    // Top line
+    double x = 0;
+    while (x < width) {
+      canvas.drawLine(
+        Offset(x, 0),
+        Offset(x + dashWidth, 0),
+        paint,
+      );
+      x += dashWidth + dashSpace;
+    }
+
+    // Right line
+    double y = 0;
+    while (y < height) {
+      canvas.drawLine(
+        Offset(width, y),
+        Offset(width, y + dashWidth),
+        paint,
+      );
+      y += dashWidth + dashSpace;
+    }
+
+    // Bottom line
+    x = width;
+    while (x > 0) {
+      canvas.drawLine(
+        Offset(x, height),
+        Offset(x - dashWidth, height),
+        paint,
+      );
+      x -= dashWidth + dashSpace;
+    }
+
+    // Left line
+    y = height;
+    while (y > 0) {
+      canvas.drawLine(
+        Offset(0, y),
+        Offset(0, y - dashWidth),
+        paint,
+      );
+      y -= dashWidth + dashSpace;
+    }
+  }
+
+  @override
+  bool shouldRepaint(DottedBorderPainter oldDelegate) => false;
 } 

@@ -7,6 +7,7 @@ import '../models/transaction_filter.dart';
 import '../models/transaction_type.dart';
 import '../widgets/category_selection_sheet.dart';
 import '../../categories/providers/categories_provider.dart';
+import '../../categories/models/category_model.dart';
 
 class FilterScreen extends ConsumerStatefulWidget {
   final TransactionFilter initialFilter;
@@ -24,11 +25,16 @@ class FilterScreen extends ConsumerStatefulWidget {
 
 class _FilterScreenState extends ConsumerState<FilterScreen> {
   late TransactionFilter _filter;
+  late List<Category> _selectedCategories;
 
   @override
   void initState() {
     super.initState();
     _filter = widget.initialFilter;
+    _selectedCategories = ref
+        .read(categoriesProvider)
+        .where((category) => _filter.categories.contains(category.id))
+        .toList();
   }
 
   Widget _buildFilterChip({
@@ -73,9 +79,6 @@ class _FilterScreenState extends ConsumerState<FilterScreen> {
 
   Widget _buildCategorySelector(bool isDarkMode) {
     final categories = ref.watch(categoriesProvider);
-    final selectedCategories = categories
-        .where((category) => _filter.categories.contains(category.id))
-        .toList();
 
     return Container(
       decoration: BoxDecoration(
@@ -91,16 +94,37 @@ class _FilterScreenState extends ConsumerState<FilterScreen> {
         padding: const EdgeInsets.all(16),
         onPressed: () async {
           await HapticService.lightImpact(ref);
-          final result = await showCupertinoModalPopup<List<String>>(
+          final result = await showCupertinoModalPopup<Category>(
             context: context,
             builder: (context) => CategorySelectionSheet(
-              selectedCategories: _filter.categories.toList(),
-              transactionTypes: _filter.types.toList() as List<TransactionType>,
+              categories: categories,
+              selectedCategory: _selectedCategories.isNotEmpty 
+                  ? _selectedCategories.first 
+                  : null,
+              onCategorySelected: (category) {
+                setState(() {
+                  if (_selectedCategories.contains(category)) {
+                    _selectedCategories.remove(category);
+                  } else {
+                    _selectedCategories.add(category);
+                  }
+                  _filter = _filter.copyWith(
+                    categories: _selectedCategories.map((c) => c.id).toSet(),
+                  );
+                });
+              },
             ),
           );
           if (result != null) {
             setState(() {
-              _filter = _filter.copyWith(categories: result.toSet());
+              if (_selectedCategories.contains(result)) {
+                _selectedCategories.remove(result);
+              } else {
+                _selectedCategories.add(result);
+              }
+              _filter = _filter.copyWith(
+                categories: _selectedCategories.map((c) => c.id).toSet(),
+              );
             });
           }
         },
@@ -118,9 +142,9 @@ class _FilterScreenState extends ConsumerState<FilterScreen> {
                         : CupertinoColors.black,
                   ),
                 ),
-                if (selectedCategories.isNotEmpty)
+                if (_selectedCategories.isNotEmpty)
                   Text(
-                    selectedCategories.map((c) => c.name).join(', '),
+                    _selectedCategories.map((c) => c.name).join(', '),
                     style: TextStyle(
                       fontSize: 13,
                       color: isDarkMode 

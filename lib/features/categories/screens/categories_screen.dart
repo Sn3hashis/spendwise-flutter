@@ -19,15 +19,23 @@ class CategoriesScreen extends ConsumerWidget {
     final isDarkMode = ref.watch(themeProvider);
     final categories = ref.watch(categoriesProvider);
     
+    List<Category> sortCategories(List<Category> cats) {
+      return [...cats]..sort((a, b) {
+        if (a.isCustom && !b.isCustom) return -1;
+        if (!a.isCustom && b.isCustom) return 1;
+        return a.name.compareTo(b.name);
+      });
+    }
+    
     final filteredCategories = filterType != null
-        ? categories.where((cat) => cat.type == filterType!).toList()
+        ? sortCategories(categories.where((cat) => cat.type == filterType!).toList())
         : categories;
     
     final incomeCategories = filterType == null
-        ? categories.where((cat) => cat.type == CategoryType.income).toList()
+        ? sortCategories(categories.where((cat) => cat.type == CategoryType.income).toList())
         : <Category>[];
     final expenseCategories = filterType == null
-        ? categories.where((cat) => cat.type == CategoryType.expense).toList()
+        ? sortCategories(categories.where((cat) => cat.type == CategoryType.expense).toList())
         : <Category>[];
 
     return CupertinoPageScaffold(
@@ -90,17 +98,18 @@ class CategoriesScreen extends ConsumerWidget {
       builder: (context) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Text(
-              title,
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-                color: isDarkMode ? CupertinoColors.white : CupertinoColors.black,
+          if (title.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  color: isDarkMode ? CupertinoColors.white : CupertinoColors.black,
+                ),
               ),
             ),
-          ),
           ...categories.map((category) => _buildCategoryTile(context, category, isDarkMode, ref)),
         ],
       ),

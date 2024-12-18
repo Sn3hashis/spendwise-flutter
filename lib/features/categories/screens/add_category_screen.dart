@@ -188,33 +188,44 @@ class _AddCategoryScreenState extends ConsumerState<AddCategoryScreen> {
                 color: isDarkMode ? AppTheme.cardDark : AppTheme.cardLight,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Wrap(
-                spacing: 16,
-                runSpacing: 16,
-                children: _icons.map((icon) {
-                  final isSelected = _selectedIcon == icon;
-                  return GestureDetector(
-                    onTap: () async {
-                      await HapticService.lightImpact(ref);
-                      setState(() => _selectedIcon = icon);
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: isSelected ? _selectedColor.withOpacity(0.2) : null,
-                        border: Border.all(
-                          color: isSelected ? _selectedColor : Colors.transparent,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final itemWidth = (constraints.maxWidth - (4 * 16)) / 5; // 5 items per row, 4 gaps
+                  return Wrap(
+                    spacing: 16,
+                    runSpacing: 16,
+                    children: _icons.map((icon) {
+                      final isSelected = _selectedIcon == icon;
+                      return SizedBox(
+                        width: itemWidth,
+                        height: itemWidth,
+                        child: GestureDetector(
+                          onTap: () async {
+                            await HapticService.lightImpact(ref);
+                            setState(() => _selectedIcon = icon);
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: isSelected ? _selectedColor.withOpacity(0.2) : null,
+                              border: Border.all(
+                                color: isSelected ? _selectedColor : Colors.transparent,
+                              ),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              icon,
+                              color: isSelected 
+                                  ? _selectedColor 
+                                  : (isDarkMode ? CupertinoColors.white : CupertinoColors.black),
+                              size: 24,
+                            ),
+                          ),
                         ),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(
-                        icon,
-                        color: isSelected ? _selectedColor : (isDarkMode ? CupertinoColors.white : CupertinoColors.black),
-                        size: 24,
-                      ),
-                    ),
+                      );
+                    }).toList(),
                   );
-                }).toList(),
+                },
               ),
             ),
             const SizedBox(height: 24),

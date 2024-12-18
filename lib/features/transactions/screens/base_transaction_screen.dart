@@ -17,6 +17,8 @@ import '../../../features/transactions/models/transaction_model.dart';
 import '../../../features/transactions/providers/transactions_provider.dart';
 import '../models/repeat_frequency.dart';
 import '../models/transaction_type.dart';
+import '../widgets/category_selection_sheet.dart';
+import '../../categories/providers/categories_provider.dart';
 
 class AttachmentPreview extends StatelessWidget {
   final String filePath;
@@ -232,19 +234,28 @@ class _BaseTransactionScreenState extends ConsumerState<BaseTransactionScreen> {
       child: CupertinoButton(
         padding: const EdgeInsets.all(16),
         onPressed: () async {
-          final result = await Navigator.push<Category>(
-            context,
-            CupertinoPageRoute(
-              builder: (context) => CategoriesScreen(
-                filterType: widget.type == TransactionType.income 
-                    ? CategoryType.income 
-                    : CategoryType.expense,
-              ),
+          final categories = ref.read(categoriesProvider).where(
+            (cat) => cat.type == (widget.type == TransactionType.income 
+                ? CategoryType.income 
+                : CategoryType.expense)
+          ).toList();
+
+          await showCupertinoModalPopup(
+            context: context,
+            useRootNavigator: true,
+            barrierDismissible: true,
+            builder: (BuildContext context) => CategorySelectionSheet(
+              categories: categories,
+              selectedCategory: _selectedCategory,
+              onCategorySelected: (category) {
+                if (mounted) {
+                  setState(() {
+                    _selectedCategory = category;
+                  });
+                }
+              },
             ),
           );
-          if (result != null) {
-            setState(() => _selectedCategory = result);
-          }
         },
         child: Row(
           children: [
