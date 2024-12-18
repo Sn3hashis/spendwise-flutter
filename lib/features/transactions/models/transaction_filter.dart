@@ -1,26 +1,32 @@
-enum TransactionType { income, expense, transfer }
-enum SortBy { highest, lowest, newest, oldest }
+import 'transaction_type.dart';
+
+enum SortBy {
+  newest,
+  oldest,
+  highest,
+  lowest,
+}
 
 class TransactionFilter {
   final Set<TransactionType> types;
-  final SortBy sortBy;
   final Set<String> categories;
+  final SortBy sortBy;
 
   const TransactionFilter({
     this.types = const {},
-    this.sortBy = SortBy.newest,
     this.categories = const {},
+    this.sortBy = SortBy.newest,
   });
 
   TransactionFilter copyWith({
     Set<TransactionType>? types,
-    SortBy? sortBy,
     Set<String>? categories,
+    SortBy? sortBy,
   }) {
     return TransactionFilter(
       types: types ?? this.types,
-      sortBy: sortBy ?? this.sortBy,
       categories: categories ?? this.categories,
+      sortBy: sortBy ?? this.sortBy,
     );
   }
 } 

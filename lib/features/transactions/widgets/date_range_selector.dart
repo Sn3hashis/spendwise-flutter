@@ -5,9 +5,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/services/haptic_service.dart';
 
 enum DateRangeType {
+  yesterday,
+  lastThreeDays,
   week,
   month,
+  lastMonth,
   year,
+  lastThreeMonths,
+  lastSixMonths,
   custom,
 }
 
@@ -24,10 +29,20 @@ class DateRange {
 
   String get displayText {
     switch (type) {
+      case DateRangeType.yesterday:
+        return 'Yesterday';
+      case DateRangeType.lastThreeDays:
+        return 'Last 3 Days';
       case DateRangeType.week:
         return 'This Week';
       case DateRangeType.month:
         return '${_getMonthName(startDate.month)} ${startDate.year}';
+      case DateRangeType.lastMonth:
+        return 'Last Month';
+      case DateRangeType.lastThreeMonths:
+        return 'Last 3 Months';
+      case DateRangeType.lastSixMonths:
+        return 'Last 6 Months';
       case DateRangeType.year:
         return startDate.year.toString();
       case DateRangeType.custom:
@@ -119,6 +134,16 @@ class _DateRangeSelectorState extends ConsumerState<DateRangeSelector> {
                 child: Column(
                   children: [
                     _buildRangeOption(
+                      'Yesterday',
+                      DateRangeType.yesterday,
+                      _getYesterdayRange(),
+                    ),
+                    _buildRangeOption(
+                      'Last 3 Days',
+                      DateRangeType.lastThreeDays,
+                      _getLastThreeDaysRange(),
+                    ),
+                    _buildRangeOption(
                       'This Week',
                       DateRangeType.week,
                       _getWeekRange(),
@@ -129,13 +154,18 @@ class _DateRangeSelectorState extends ConsumerState<DateRangeSelector> {
                       _getMonthRange(),
                     ),
                     _buildRangeOption(
+                      'Last Month',
+                      DateRangeType.lastMonth,
+                      _getLastMonthRange(),
+                    ),
+                    _buildRangeOption(
                       'Last 3 Months',
-                      DateRangeType.custom,
+                      DateRangeType.lastThreeMonths,
                       _getLastThreeMonthsRange(),
                     ),
                     _buildRangeOption(
                       'Last 6 Months',
-                      DateRangeType.custom,
+                      DateRangeType.lastSixMonths,
                       _getLastSixMonthsRange(),
                     ),
                     _buildRangeOption(
@@ -166,8 +196,10 @@ class _DateRangeSelectorState extends ConsumerState<DateRangeSelector> {
     bool showCustomPicker = false,
   }) {
     final isDarkMode = ref.watch(themeProvider);
-    final isCustomSelected = widget.selectedRange.type == DateRangeType.custom && title == 'Custom Range';
-
+    final isSelected = showCustomPicker 
+        ? widget.selectedRange.type == DateRangeType.custom && title == 'Custom Range'
+        : widget.selectedRange.type == type;
+    
     return CupertinoButton(
       padding: EdgeInsets.zero,
       onPressed: () async {
@@ -182,6 +214,9 @@ class _DateRangeSelectorState extends ConsumerState<DateRangeSelector> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
+          color: isSelected 
+              ? CupertinoColors.systemPurple.withOpacity(0.1)
+              : null,
           border: Border(
             bottom: BorderSide(
               color: isDarkMode 
@@ -199,10 +234,12 @@ class _DateRangeSelectorState extends ConsumerState<DateRangeSelector> {
                   Text(
                     title,
                     style: TextStyle(
-                      color: isDarkMode ? CupertinoColors.white : CupertinoColors.black,
+                      color: isSelected
+                          ? CupertinoColors.systemPurple
+                          : (isDarkMode ? CupertinoColors.white : CupertinoColors.black),
                     ),
                   ),
-                  if (isCustomSelected)
+                  if (isSelected && type == DateRangeType.custom)
                     Text(
                       '${widget.selectedRange.startDate.day} ${_getMonthName(widget.selectedRange.startDate.month)} ${widget.selectedRange.startDate.year} - ${widget.selectedRange.endDate.day} ${_getMonthName(widget.selectedRange.endDate.month)} ${widget.selectedRange.endDate.year}',
                       style: TextStyle(
@@ -215,7 +252,12 @@ class _DateRangeSelectorState extends ConsumerState<DateRangeSelector> {
                 ],
               ),
             ),
-            if (showCustomPicker)
+            if (isSelected && !showCustomPicker)
+              const Icon(
+                CupertinoIcons.checkmark_alt,
+                color: CupertinoColors.systemPurple,
+              )
+            else if (showCustomPicker)
               Icon(
                 CupertinoIcons.chevron_right,
                 color: isDarkMode 
@@ -393,21 +435,52 @@ class _DateRangeSelectorState extends ConsumerState<DateRangeSelector> {
 
   DateRange _getLastThreeMonthsRange() {
     final now = DateTime.now();
-    final startOfRange = DateTime(now.year, now.month - 2, 1); // Goes back 3 months
+    final startOfRange = DateTime(now.year, now.month - 2, 1);
     return DateRange(
       startDate: startOfRange,
       endDate: now,
-      type: DateRangeType.custom,
+      type: DateRangeType.lastThreeMonths,
     );
   }
 
   DateRange _getLastSixMonthsRange() {
     final now = DateTime.now();
-    final startOfRange = DateTime(now.year, now.month - 5, 1); // Goes back 6 months
+    final startOfRange = DateTime(now.year, now.month - 5, 1);
     return DateRange(
       startDate: startOfRange,
       endDate: now,
-      type: DateRangeType.custom,
+      type: DateRangeType.lastSixMonths,
+    );
+  }
+
+  DateRange _getYesterdayRange() {
+    final now = DateTime.now();
+    final yesterday = now.subtract(const Duration(days: 1));
+    return DateRange(
+      startDate: yesterday,
+      endDate: yesterday,
+      type: DateRangeType.yesterday,
+    );
+  }
+
+  DateRange _getLastThreeDaysRange() {
+    final now = DateTime.now();
+    final threeDaysAgo = now.subtract(const Duration(days: 3));
+    return DateRange(
+      startDate: threeDaysAgo,
+      endDate: now,
+      type: DateRangeType.lastThreeDays,
+    );
+  }
+
+  DateRange _getLastMonthRange() {
+    final now = DateTime.now();
+    final lastMonth = DateTime(now.year, now.month - 1, 1);
+    final lastDayOfLastMonth = DateTime(now.year, now.month, 0);
+    return DateRange(
+      startDate: lastMonth,
+      endDate: lastDayOfLastMonth,
+      type: DateRangeType.lastMonth,
     );
   }
 

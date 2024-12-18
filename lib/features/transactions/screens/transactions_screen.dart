@@ -11,6 +11,7 @@ import '../../../core/services/haptic_service.dart';
 import '../models/transaction_model.dart';
 import '../../categories/providers/categories_provider.dart';
 import '../providers/transactions_provider.dart';
+import '../providers/transaction_filter_provider.dart';
 
 class TransactionsScreen extends ConsumerStatefulWidget {
   const TransactionsScreen({super.key});
@@ -20,13 +21,11 @@ class TransactionsScreen extends ConsumerStatefulWidget {
 }
 
 class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
-  TransactionFilter _filter = const TransactionFilter();
   late DateRange _selectedRange;
 
   @override
   void initState() {
     super.initState();
-    // Initialize with current month
     final now = DateTime.now();
     _selectedRange = DateRange(
       startDate: DateTime(now.year, now.month, 1),
@@ -36,11 +35,46 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   }
 
   int _getActiveFilterCount() {
+    final filter = ref.watch(transactionFilterProvider);
     int count = 0;
-    if (_filter.types.isNotEmpty) count++;
-    if (_filter.sortBy != SortBy.newest) count++;
-    if (_filter.categories.isNotEmpty) count++;
+    if (filter.types.isNotEmpty) count++;
+    if (filter.sortBy != SortBy.newest) count++;
+    if (filter.categories.isNotEmpty) count++;
     return count;
+  }
+
+  List<Transaction> _getFilteredTransactions(List<Transaction> transactions) {
+    final filter = ref.watch(transactionFilterProvider);
+    return transactions.where((transaction) {
+      // Date range filter
+      final isInDateRange = transaction.date.isAfter(_selectedRange.startDate) && 
+                           transaction.date.isBefore(_selectedRange.endDate.add(const Duration(days: 1)));
+      if (!isInDateRange) return false;
+
+      // Transaction type filter
+      if (filter.types.isNotEmpty && !filter.types.contains(transaction.type)) {
+        return false;
+      }
+
+      // Category filter
+      if (filter.categories.isNotEmpty && !filter.categories.contains(transaction.category.id)) {
+        return false;
+      }
+
+      return true;
+    }).toList()
+      ..sort((a, b) {
+        switch (filter.sortBy) {
+          case SortBy.newest:
+            return b.date.compareTo(a.date);
+          case SortBy.oldest:
+            return a.date.compareTo(b.date);
+          case SortBy.highest:
+            return b.amount.abs().compareTo(a.amount.abs());
+          case SortBy.lowest:
+            return a.amount.abs().compareTo(b.amount.abs());
+        }
+      });
   }
 
   @override
@@ -48,6 +82,9 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     final isDarkMode = ref.watch(themeProvider);
     final settings = ref.watch(settingsProvider);
     final transactions = ref.watch(transactionsProvider);
+    
+    // Apply filters to transactions
+    final filteredTransactions = _getFilteredTransactions(transactions);
 
     return CupertinoPageScaffold(
       backgroundColor: isDarkMode ? AppTheme.backgroundDark : AppTheme.backgroundLight,
@@ -67,7 +104,6 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                         setState(() {
                           _selectedRange = range;
                         });
-                        // TODO: Filter transactions based on selected date range
                       },
                     ),
                   ),
@@ -115,12 +151,9 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                       showCupertinoModalPopup<void>(
                         context: context,
                         builder: (BuildContext context) => FilterScreen(
-                          initialFilter: _filter,
+                          initialFilter: ref.read(transactionFilterProvider),
                           onApply: (filter) {
-                            setState(() {
-                              _filter = filter;
-                            });
-                            // TODO: Apply filter to transactions
+                            ref.read(transactionFilterProvider.notifier).updateFilter(filter);
                           },
                         ),
                       );
@@ -164,15 +197,25 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             const SizedBox(height: 8),
             // Transactions List
             Expanded(
-              child: ListView.builder(
-                itemCount: transactions.length,
-                itemBuilder: (context, index) {
-                  final transaction = transactions[index];
-                  return TransactionListItem(
-                    transaction: transaction,
-                  );
-                },
-              ),
+              child: filteredTransactions.isEmpty
+                  ? Center(
+                      child: Text(
+                        'No transactions found',
+                        style: TextStyle(
+                          color: isDarkMode ? CupertinoColors.systemGrey : CupertinoColors.systemGrey2,
+                          fontSize: 17,
+                        ),
+                      ),
+                    )
+                  : ListView.builder(
+                      itemCount: filteredTransactions.length,
+                      itemBuilder: (context, index) {
+                        final transaction = filteredTransactions[index];
+                        return TransactionListItem(
+                          transaction: transaction,
+                        );
+                      },
+                    ),
             ),
           ],
         ),

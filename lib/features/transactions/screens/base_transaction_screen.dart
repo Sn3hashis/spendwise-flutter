@@ -16,8 +16,7 @@ import '../../../features/categories/screens/categories_screen.dart';
 import '../../../features/transactions/models/transaction_model.dart';
 import '../../../features/transactions/providers/transactions_provider.dart';
 import '../models/repeat_frequency.dart';
-
-enum TransactionType { income, expense, transfer }
+import '../models/transaction_type.dart';
 
 class AttachmentPreview extends StatelessWidget {
   final String filePath;
@@ -145,6 +144,10 @@ class _BaseTransactionScreenState extends ConsumerState<BaseTransactionScreen> {
   DateTime? _repeatEndDate;
   Category? _selectedCategory;
 
+  static const _padding = EdgeInsets.all(24);
+  static const _spacing = SizedBox(height: 16);
+  static const _largeSpacing = SizedBox(height: 24);
+
   @override
   void initState() {
     super.initState();
@@ -188,26 +191,31 @@ class _BaseTransactionScreenState extends ConsumerState<BaseTransactionScreen> {
     });
   }
 
-  void _saveTransaction() {
+  void _saveTransaction() async {
     if (!_isValid || _selectedCategory == null) return;
+
+    await HapticService.lightImpact(ref);
 
     final amount = double.parse(_amountController.text);
     
     final transaction = Transaction(
       id: DateTime.now().toString(),
-      amount: widget.type == TransactionType.expense ? -amount : amount,  // Make expense negative
+      amount: widget.type == TransactionType.expense ? -amount : amount,
       description: _descriptionController.text,
       category: _selectedCategory!,
       date: DateTime.now(),
       currencyCode: ref.read(settingsProvider).currency,
       attachments: _attachments,
+      type: widget.type,
       isRepeat: _isRepeat,
       repeatFrequency: _isRepeat ? _repeatFrequency : null,
       repeatEndDate: _repeatEndDate,
     );
 
-    ref.read(transactionsProvider.notifier).addTransaction(transaction);
-    Navigator.pop(context);
+    if (mounted) {
+      ref.read(transactionsProvider.notifier).addTransaction(transaction);
+      Navigator.pop(context);
+    }
   }
 
   Widget _buildCategorySelector(bool isDarkMode) {
@@ -287,6 +295,420 @@ class _BaseTransactionScreenState extends ConsumerState<BaseTransactionScreen> {
     );
   }
 
+  Widget _buildDescriptionField(bool isDarkMode) {
+    return Container(
+      decoration: _getCardDecoration(isDarkMode),
+      child: CupertinoTextField(
+        controller: _descriptionController,
+        padding: const EdgeInsets.all(16),
+        placeholder: 'Description',
+        decoration: null,
+        style: TextStyle(
+          color: isDarkMode 
+              ? CupertinoColors.white 
+              : CupertinoColors.black,
+        ),
+        placeholderStyle: TextStyle(
+          color: isDarkMode 
+              ? CupertinoColors.systemGrey 
+              : CupertinoColors.systemGrey2,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWalletSelector(bool isDarkMode) {
+    return Container(
+      decoration: _getCardDecoration(isDarkMode),
+      child: CupertinoButton(
+        padding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 12,
+        ),
+        onPressed: () {
+          // TODO: Show wallet selector
+        },
+        child: Row(
+          children: [
+            Text(
+              'Wallet',
+              style: TextStyle(
+                fontSize: 17,
+                color: isDarkMode 
+                    ? CupertinoColors.white 
+                    : CupertinoColors.black,
+              ),
+            ),
+            const Spacer(),
+            Icon(
+              CupertinoIcons.chevron_down,
+              size: 16,
+              color: isDarkMode 
+                  ? CupertinoColors.systemGrey 
+                  : CupertinoColors.systemGrey2,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  BoxDecoration _getCardDecoration(bool isDarkMode) {
+    return BoxDecoration(
+      color: isDarkMode ? AppTheme.cardDark : AppTheme.cardLight,
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(
+        color: isDarkMode 
+            ? const Color(0xFF2C2C2E) 
+            : const Color(0xFFE5E5EA),
+      ),
+    );
+  }
+
+  Widget _buildAttachmentSection(bool isDarkMode) {
+    return Container(
+      decoration: BoxDecoration(
+        color: isDarkMode ? AppTheme.cardDark : AppTheme.cardLight,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isDarkMode 
+              ? const Color(0xFF2C2C2E) 
+              : const Color(0xFFE5E5EA),
+        ),
+      ),
+      child: _attachments.isEmpty
+          ? CupertinoButton(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
+              ),
+              onPressed: () {
+                AttachmentService.showAttachmentOptions(
+                  context,
+                  onAttachmentsSelected: (paths) {
+                    setState(() {
+                      _attachments.addAll(paths);
+                    });
+                  },
+                );
+              },
+              child: Row(
+                children: [
+                  Icon(
+                    CupertinoIcons.paperclip,
+                    color: isDarkMode 
+                        ? CupertinoColors.white 
+                        : CupertinoColors.black,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Add attachment',
+                    style: TextStyle(
+                      fontSize: 17,
+                      color: isDarkMode 
+                          ? CupertinoColors.white 
+                          : CupertinoColors.black,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          : Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        for (int i = 0; i < _attachments.length; i++) ...[
+                          if (i > 0) const SizedBox(width: 12),
+                          AttachmentPreview(
+                            filePath: _attachments[i],
+                            onDelete: () => _deleteAttachment(i),
+                            isDarkMode: isDarkMode,
+                          ),
+                        ],
+                        if (_attachments.length < 2) ...[
+                          const SizedBox(width: 12),
+                          CupertinoButton(
+                            padding: EdgeInsets.zero,
+                            onPressed: () {
+                              AttachmentService.showAttachmentOptions(
+                                context,
+                                onAttachmentsSelected: (paths) {
+                                  setState(() {
+                                    _attachments.addAll(paths);
+                                  });
+                                },
+                              );
+                            },
+                            child: Container(
+                              width: 100,
+                              height: 100,
+                              decoration: BoxDecoration(
+                                color: isDarkMode 
+                                    ? AppTheme.cardDark 
+                                    : AppTheme.cardLight,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: isDarkMode 
+                                      ? const Color(0xFF2C2C2E) 
+                                      : const Color(0xFFE5E5EA),
+                                ),
+                              ),
+                              child: Center(
+                                child: Icon(
+                                  CupertinoIcons.add_circled,
+                                  size: 30,
+                                  color: isDarkMode 
+                                      ? CupertinoColors.white 
+                                      : CupertinoColors.black,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+    );
+  }
+
+  Widget _buildRepeatSection(bool isDarkMode) {
+    return Container(
+      decoration: BoxDecoration(
+        color: isDarkMode ? AppTheme.cardDark : AppTheme.cardLight,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isDarkMode 
+              ? const Color(0xFF2C2C2E) 
+              : const Color(0xFFE5E5EA),
+        ),
+      ),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 16,
+        vertical: 8,
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Repeat',
+                    style: TextStyle(
+                      fontSize: 17,
+                      color: isDarkMode 
+                          ? CupertinoColors.white 
+                          : CupertinoColors.black,
+                    ),
+                  ),
+                  Text(
+                    _isRepeat 
+                        ? '${_repeatFrequency.name.substring(0, 1).toUpperCase()}${_repeatFrequency.name.substring(1)} until ${_repeatEndDate?.toString().split(' ')[0] ?? 'No end date'}'
+                        : 'Repeat transaction',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: isDarkMode 
+                          ? CupertinoColors.systemGrey 
+                          : CupertinoColors.systemGrey2,
+                    ),
+                  ),
+                ],
+              ),
+              const Spacer(),
+              CupertinoSwitch(
+                value: _isRepeat,
+                onChanged: (value) async {
+                  await HapticService.lightImpact(ref);
+                  setState(() {
+                    _isRepeat = value;
+                  });
+                  if (value && mounted) {
+                    showCupertinoModalPopup(
+                      context: context,
+                      builder: (context) => ProviderScope(
+                        parent: ProviderScope.containerOf(context),
+                        child: RepeatDialog(
+                          frequency: _repeatFrequency,
+                          endDate: _repeatEndDate,
+                          onSave: (frequency, endDate) {
+                            setState(() {
+                              _repeatFrequency = frequency;
+                              _repeatEndDate = endDate;
+                            });
+                            Navigator.pop(context);
+                          },
+                        ),
+                      ),
+                    );
+                  }
+                },
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return SafeArea(
+      bottom: false,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 12),
+        child: Row(
+          children: [
+            CupertinoButton(
+              padding: EdgeInsets.zero,
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Icon(
+                CupertinoIcons.back,
+                color: CupertinoColors.white,
+              ),
+            ),
+            Expanded(
+              child: Text(
+                _getTitle(),
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w600,
+                  color: CupertinoColors.white,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+            const SizedBox(width: 40),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAmountInput() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 32, 24, 48),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'How much?',
+            style: TextStyle(
+              fontSize: 20,
+              color: CupertinoColors.white,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(
+                getCurrencySymbol(ref.watch(settingsProvider).currency),
+                style: const TextStyle(
+                  fontSize: 64,
+                  color: CupertinoColors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Expanded(
+                child: CupertinoTextField(
+                  controller: _amountController,
+                  style: const TextStyle(
+                    fontSize: 64,
+                    color: CupertinoColors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  decoration: null,
+                  placeholder: '0',
+                  placeholderStyle: TextStyle(
+                    fontSize: 64,
+                    color: CupertinoColors.white.withOpacity(0.5),
+                    fontWeight: FontWeight.bold,
+                  ),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+                    TextInputFormatter.withFunction((oldValue, newValue) {
+                      try {
+                        final text = newValue.text;
+                        if (text.isEmpty) return newValue;
+                        final number = double.parse(text);
+                        final isValid = text.contains('.') ? text.split('.')[1].length <= 2 : true;
+                        if (isValid) return newValue;
+                      } catch (e) {}
+                      return oldValue;
+                    }),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFormFields(bool isDarkMode) {
+    return Container(
+      decoration: BoxDecoration(
+        color: isDarkMode ? AppTheme.backgroundDark : AppTheme.backgroundLight,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+      ),
+      child: ListView(
+        padding: _padding,
+        physics: const BouncingScrollPhysics(),
+        children: [
+          RepaintBoundary(child: _buildCategorySelector(isDarkMode)),
+          _spacing,
+          _buildDescriptionField(isDarkMode),
+          _spacing,
+          _buildWalletSelector(isDarkMode),
+          _spacing,
+          RepaintBoundary(child: _buildAttachmentSection(isDarkMode)),
+          _largeSpacing,
+          RepaintBoundary(child: _buildRepeatSection(isDarkMode)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSaveButton(bool isDarkMode, Color themeColor) {
+    return Container(
+      color: isDarkMode ? AppTheme.backgroundDark : AppTheme.backgroundLight,
+      padding: EdgeInsets.only(
+        left: 24,
+        right: 24,
+        bottom: MediaQuery.of(context).padding.bottom + 24,
+        top: 16,
+      ),
+      child: CupertinoButton(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        borderRadius: BorderRadius.circular(30),
+        color: themeColor,
+        onPressed: _isValid && _selectedCategory != null ? _saveTransaction : null,
+        child: const Center(
+          child: Text(
+            'Save',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: CupertinoColors.white,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDarkMode = ref.watch(themeProvider);
@@ -298,407 +720,15 @@ class _BaseTransactionScreenState extends ConsumerState<BaseTransactionScreen> {
         child: Column(
           children: [
             // Header
-            SafeArea(
-              bottom: false,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 12),
-                child: Row(
-                  children: [
-                    CupertinoButton(
-                      padding: EdgeInsets.zero,
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: const Icon(
-                        CupertinoIcons.back,
-                        color: CupertinoColors.white,
-                      ),
-                    ),
-                    Expanded(
-                      child: Text(
-                        _getTitle(),
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w600,
-                          color: CupertinoColors.white,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                    const SizedBox(width: 40),
-                  ],
-                ),
-              ),
-            ),
+            RepaintBoundary(child: _buildHeader()),
             // Amount Input
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'How much?',
-                    style: TextStyle(
-                      fontSize: 20,
-                      color: CupertinoColors.white,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
-                    children: [
-                      Text(
-                        getCurrencySymbol(ref.watch(settingsProvider).currency),
-                        style: const TextStyle(
-                          fontSize: 40,
-                          color: CupertinoColors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Expanded(
-                        child: CupertinoTextField(
-                          controller: _amountController,
-                          style: const TextStyle(
-                            fontSize: 40,
-                            color: CupertinoColors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          decoration: null,
-                          placeholder: '0',
-                          placeholderStyle: TextStyle(
-                            fontSize: 40,
-                            color: CupertinoColors.white.withOpacity(0.5),
-                            fontWeight: FontWeight.bold,
-                          ),
-                          inputFormatters: [
-                            FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
-                            TextInputFormatter.withFunction((oldValue, newValue) {
-                              try {
-                                final text = newValue.text;
-                                if (text.isEmpty) return newValue;
-                                final number = double.parse(text);
-                                final isValid = text.contains('.') ? text.split('.')[1].length <= 2 : true;
-                                if (isValid) return newValue;
-                              } catch (e) {}
-                              return oldValue;
-                            }),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
+            RepaintBoundary(child: _buildAmountInput()),
             // Form Fields
             Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: isDarkMode ? AppTheme.backgroundDark : AppTheme.backgroundLight,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-                ),
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    children: [
-                      // Category Selector
-                      _buildCategorySelector(isDarkMode),
-                      const SizedBox(height: 16),
-                      // Description Field
-                      Container(
-                        decoration: BoxDecoration(
-                          color: isDarkMode ? AppTheme.cardDark : AppTheme.cardLight,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: isDarkMode 
-                                ? const Color(0xFF2C2C2E) 
-                                : const Color(0xFFE5E5EA),
-                          ),
-                        ),
-                        child: CupertinoTextField(
-                          controller: _descriptionController,
-                          padding: const EdgeInsets.all(16),
-                          placeholder: 'Description',
-                          decoration: null,
-                          style: TextStyle(
-                            color: isDarkMode 
-                                ? CupertinoColors.white 
-                                : CupertinoColors.black,
-                          ),
-                          placeholderStyle: TextStyle(
-                            color: isDarkMode 
-                                ? CupertinoColors.systemGrey 
-                                : CupertinoColors.systemGrey2,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      // Wallet Selector
-                      Container(
-                        decoration: BoxDecoration(
-                          color: isDarkMode ? AppTheme.cardDark : AppTheme.cardLight,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: isDarkMode 
-                                ? const Color(0xFF2C2C2E) 
-                                : const Color(0xFFE5E5EA),
-                          ),
-                        ),
-                        child: CupertinoButton(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                          onPressed: () {
-                            // TODO: Show wallet selector
-                          },
-                          child: Row(
-                            children: [
-                              Text(
-                                'Wallet',
-                                style: TextStyle(
-                                  fontSize: 17,
-                                  color: isDarkMode 
-                                      ? CupertinoColors.white 
-                                      : CupertinoColors.black,
-                                ),
-                              ),
-                              const Spacer(),
-                              Icon(
-                                CupertinoIcons.chevron_down,
-                                size: 16,
-                                color: isDarkMode 
-                                    ? CupertinoColors.systemGrey 
-                                    : CupertinoColors.systemGrey2,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      // Attachment Button
-                      Container(
-                        decoration: BoxDecoration(
-                          color: isDarkMode ? AppTheme.cardDark : AppTheme.cardLight,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: isDarkMode 
-                                ? const Color(0xFF2C2C2E) 
-                                : const Color(0xFFE5E5EA),
-                          ),
-                        ),
-                        child: _attachments.isEmpty
-                            ? CupertinoButton(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 12,
-                                ),
-                                onPressed: () {
-                                  AttachmentService.showAttachmentOptions(
-                                    context,
-                                    onAttachmentsSelected: (paths) {
-                                      setState(() {
-                                        _attachments.addAll(paths);
-                                      });
-                                    },
-                                  );
-                                },
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      CupertinoIcons.paperclip,
-                                      color: isDarkMode 
-                                          ? CupertinoColors.white 
-                                          : CupertinoColors.black,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'Add attachment',
-                                      style: TextStyle(
-                                        fontSize: 17,
-                                        color: isDarkMode 
-                                            ? CupertinoColors.white 
-                                            : CupertinoColors.black,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              )
-                            : Padding(
-                                padding: const EdgeInsets.all(16),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    SingleChildScrollView(
-                                      scrollDirection: Axis.horizontal,
-                                      child: Row(
-                                        children: [
-                                          for (int i = 0; i < _attachments.length; i++) ...[
-                                            if (i > 0) const SizedBox(width: 12),
-                                            AttachmentPreview(
-                                              filePath: _attachments[i],
-                                              onDelete: () => _deleteAttachment(i),
-                                              isDarkMode: isDarkMode,
-                                            ),
-                                          ],
-                                          if (_attachments.length < 2) ...[
-                                            const SizedBox(width: 12),
-                                            CupertinoButton(
-                                              padding: EdgeInsets.zero,
-                                              onPressed: () {
-                                                AttachmentService.showAttachmentOptions(
-                                                  context,
-                                                  onAttachmentsSelected: (paths) {
-                                                    setState(() {
-                                                      _attachments.addAll(paths);
-                                                    });
-                                                  },
-                                                );
-                                              },
-                                              child: Container(
-                                                width: 100,
-                                                height: 100,
-                                                decoration: BoxDecoration(
-                                                  color: isDarkMode 
-                                                      ? AppTheme.cardDark 
-                                                      : AppTheme.cardLight,
-                                                  borderRadius: BorderRadius.circular(12),
-                                                  border: Border.all(
-                                                    color: isDarkMode 
-                                                        ? const Color(0xFF2C2C2E) 
-                                                        : const Color(0xFFE5E5EA),
-                                                  ),
-                                                ),
-                                                child: Center(
-                                                  child: Icon(
-                                                    CupertinoIcons.add_circled,
-                                                    size: 30,
-                                                    color: isDarkMode 
-                                                        ? CupertinoColors.white 
-                                                        : CupertinoColors.black,
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                      ),
-                      const SizedBox(height: 24),
-                      // Repeat Switch
-                      Container(
-                        decoration: BoxDecoration(
-                          color: isDarkMode ? AppTheme.cardDark : AppTheme.cardLight,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: isDarkMode 
-                                ? const Color(0xFF2C2C2E) 
-                                : const Color(0xFFE5E5EA),
-                          ),
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                        child: Column(
-                          children: [
-                            Row(
-                              children: [
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Repeat',
-                                      style: TextStyle(
-                                        fontSize: 17,
-                                        color: isDarkMode 
-                                            ? CupertinoColors.white 
-                                            : CupertinoColors.black,
-                                      ),
-                                    ),
-                                    Text(
-                                      _isRepeat 
-                                          ? '${_repeatFrequency.name.substring(0, 1).toUpperCase()}${_repeatFrequency.name.substring(1)} until ${_repeatEndDate?.toString().split(' ')[0] ?? 'No end date'}'
-                                          : 'Repeat transaction',
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        color: isDarkMode 
-                                            ? CupertinoColors.systemGrey 
-                                            : CupertinoColors.systemGrey2,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const Spacer(),
-                                CupertinoSwitch(
-                                  value: _isRepeat,
-                                  onChanged: (value) async {
-                                    await HapticService.lightImpact(ref);
-                                    setState(() {
-                                      _isRepeat = value;
-                                    });
-                                    if (value && mounted) {
-                                      showCupertinoModalPopup(
-                                        context: context,
-                                        builder: (context) => ProviderScope(
-                                          parent: ProviderScope.containerOf(context),
-                                          child: RepeatDialog(
-                                            frequency: _repeatFrequency,
-                                            endDate: _repeatEndDate,
-                                            onSave: (frequency, endDate) {
-                                              setState(() {
-                                                _repeatFrequency = frequency;
-                                                _repeatEndDate = endDate;
-                                              });
-                                              Navigator.pop(context);
-                                            },
-                                          ),
-                                        ),
-                                      );
-                                    }
-                                  },
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+              child: _buildFormFields(isDarkMode),
             ),
             // Save Button
-            Container(
-              color: isDarkMode ? AppTheme.backgroundDark : AppTheme.backgroundLight,
-              padding: EdgeInsets.only(
-                left: 24,
-                right: 24,
-                bottom: MediaQuery.of(context).padding.bottom + 24,
-                top: 16,
-              ),
-              child: CupertinoButton(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                borderRadius: BorderRadius.circular(30),
-                color: themeColor,
-                onPressed: _isValid && _selectedCategory != null ? _saveTransaction : null,
-                child: const Center(
-                  child: Text(
-                    'Save',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: CupertinoColors.white,
-                    ),
-                  ),
-                ),
-              ),
-            ),
+            RepaintBoundary(child: _buildSaveButton(isDarkMode, themeColor)),
           ],
         ),
       ),

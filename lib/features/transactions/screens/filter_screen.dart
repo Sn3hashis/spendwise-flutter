@@ -4,6 +4,9 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/providers/theme_provider.dart';
 import '../../../core/services/haptic_service.dart';
 import '../models/transaction_filter.dart';
+import '../models/transaction_type.dart';
+import '../widgets/category_selection_sheet.dart';
+import '../../categories/providers/categories_provider.dart';
 
 class FilterScreen extends ConsumerStatefulWidget {
   final TransactionFilter initialFilter;
@@ -63,6 +66,79 @@ class _FilterScreenState extends ConsumerState<FilterScreen> {
                     ? CupertinoColors.white 
                     : CupertinoColors.black,
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCategorySelector(bool isDarkMode) {
+    final categories = ref.watch(categoriesProvider);
+    final selectedCategories = categories
+        .where((category) => _filter.categories.contains(category.id))
+        .toList();
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isDarkMode ? AppTheme.cardDark : AppTheme.cardLight,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isDarkMode 
+              ? const Color(0xFF2C2C2E) 
+              : const Color(0xFFE5E5EA),
+        ),
+      ),
+      child: CupertinoButton(
+        padding: const EdgeInsets.all(16),
+        onPressed: () async {
+          await HapticService.lightImpact(ref);
+          final result = await showCupertinoModalPopup<List<String>>(
+            context: context,
+            builder: (context) => CategorySelectionSheet(
+              selectedCategories: _filter.categories.toList(),
+              transactionTypes: _filter.types.toList() as List<TransactionType>,
+            ),
+          );
+          if (result != null) {
+            setState(() {
+              _filter = _filter.copyWith(categories: result.toSet());
+            });
+          }
+        },
+        child: Row(
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Category',
+                  style: TextStyle(
+                    fontSize: 17,
+                    color: isDarkMode 
+                        ? CupertinoColors.white 
+                        : CupertinoColors.black,
+                  ),
+                ),
+                if (selectedCategories.isNotEmpty)
+                  Text(
+                    selectedCategories.map((c) => c.name).join(', '),
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: isDarkMode 
+                          ? CupertinoColors.systemGrey 
+                          : CupertinoColors.systemGrey2,
+                    ),
+                  ),
+              ],
+            ),
+            const Spacer(),
+            Icon(
+              CupertinoIcons.chevron_right,
+              color: isDarkMode 
+                  ? CupertinoColors.systemGrey 
+                  : CupertinoColors.systemGrey2,
+              size: 20,
+            ),
+          ],
         ),
       ),
     );
@@ -206,43 +282,7 @@ class _FilterScreenState extends ConsumerState<FilterScreen> {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  CupertinoButton(
-                    padding: EdgeInsets.zero,
-                    onPressed: () {
-                      // TODO: Show category selector
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: isDarkMode ? AppTheme.cardDark : AppTheme.cardLight,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: isDarkMode 
-                              ? const Color(0xFF2C2C2E) 
-                              : const Color(0xFFE5E5EA),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Text(
-                            'Choose Category',
-                            style: TextStyle(
-                              color: isDarkMode 
-                                  ? CupertinoColors.white 
-                                  : CupertinoColors.black,
-                            ),
-                          ),
-                          const Spacer(),
-                          Icon(
-                            CupertinoIcons.chevron_right,
-                            color: isDarkMode 
-                                ? CupertinoColors.systemGrey 
-                                : CupertinoColors.systemGrey2,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+                  _buildCategorySelector(isDarkMode),
                 ],
               ),
             ),
