@@ -11,6 +11,8 @@ import '../../../features/transactions/widgets/transaction_list_item.dart';
 import '../../../core/utils/currency_helper.dart';
 import '../../../features/settings/providers/settings_provider.dart';
 import '../../../core/providers/currency_provider.dart';
+import '../../../core/widgets/exit_dialog.dart';
+import 'package:flutter/services.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -171,6 +173,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         selectedMonth = nextMonth;
       });
     }
+  }
+
+  Future<bool> _onWillPop() async {
+    if (!mounted) return false;
+    
+    final shouldPop = await ExitDialog.show(context);
+    if (shouldPop ?? false) {
+      SystemNavigator.pop();
+      return true;
+    }
+    return false;
   }
 
   @override

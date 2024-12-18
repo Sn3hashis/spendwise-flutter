@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart' show Colors;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:lottie/lottie.dart';
@@ -46,27 +47,69 @@ class _AddPayeeScreenState extends ConsumerState<AddPayeeScreen> {
   }
 
   Future<void> _pickContact() async {
-    if (await FlutterContacts.requestPermission()) {
-      final contact = await FlutterContacts.openExternalPick();
-      if (contact != null) {
-        final fullContact = await FlutterContacts.getContact(contact.id);
-        if (fullContact != null) {
-          setState(() {
-            _nameController.text = fullContact.displayName;
-            if (fullContact.phones.isNotEmpty) {
-              _phoneController.text = fullContact.phones.first.number;
-            }
-            if (fullContact.emails.isNotEmpty) {
-              _emailController.text = fullContact.emails.first.address;
-            }
-            // Handle contact photo if available
-            if (fullContact.photo != null) {
-              // Save photo to temporary file and use its path
-              // Implementation depends on your image handling strategy
-            }
-          });
-        }
+    try {
+      if (!await FlutterContacts.requestPermission()) {
+        if (!mounted) return;
+        showCupertinoDialog(
+          context: context,
+          builder: (context) => CupertinoAlertDialog(
+            title: const Text('Permission Required'),
+            content: const Text('Please enable contacts permission to use this feature.'),
+            actions: [
+              CupertinoDialogAction(
+                child: const Text('OK'),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+        );
+        return;
       }
+
+      // Get contact with full details directly
+      final contact = await FlutterContacts.openExternalPick();
+      if (contact == null || !mounted) return;
+
+      // Get full contact details
+      final fullContact = await FlutterContacts.getContact(contact.id);
+      if (fullContact == null || !mounted) return;
+
+      // Update form fields
+      setState(() {
+        // Name
+        _nameController.text = fullContact.displayName;
+
+        // Phone
+        if (fullContact.phones.isNotEmpty) {
+          _phoneController.text = fullContact.phones.first.number.replaceAll(RegExp(r'[^\d+]'), '');
+        }
+
+        // Email
+        if (fullContact.emails.isNotEmpty) {
+          _emailController.text = fullContact.emails.first.address;
+        }
+      });
+
+      // Validate inputs
+      _validateInputs();
+
+    } catch (e) {
+      debugPrint('Error picking contact: $e');
+      if (!mounted) return;
+      
+      showCupertinoDialog(
+        context: context,
+        builder: (context) => CupertinoAlertDialog(
+          title: const Text('Error'),
+          content: const Text('Failed to pick contact. Please try again.'),
+          actions: [
+            CupertinoDialogAction(
+              child: const Text('OK'),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ],
+        ),
+      );
     }
   }
 

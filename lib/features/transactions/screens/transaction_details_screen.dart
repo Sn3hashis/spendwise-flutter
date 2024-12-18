@@ -60,13 +60,13 @@ class TransactionDetailsScreen extends ConsumerWidget {
               ),
             ),
             const SizedBox(width: 16),
-            // Category
+            // Category or To
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Category',
+                    transaction.type == TransactionType.transfer ? 'To' : 'Category',
                     style: TextStyle(
                       fontSize: 15,
                       color: isDarkMode 
@@ -76,7 +76,9 @@ class TransactionDetailsScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    transaction.category.name,
+                    transaction.type == TransactionType.transfer 
+                        ? (transaction.toPayee?.name ?? transaction.toWallet ?? 'Default Wallet')
+                        : transaction.category.name,
                     style: TextStyle(
                       fontSize: 17,
                       color: isDarkMode 
@@ -278,6 +280,23 @@ class TransactionDetailsScreen extends ConsumerWidget {
     );
   }
 
+  void _showPayeeEditDisabledMessage(BuildContext context) {
+    showCupertinoDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) => CupertinoAlertDialog(
+        title: const Text('Cannot Edit Payee'),
+        content: const Text('Payee transactions cannot be edited to maintain transaction history integrity.'),
+        actions: [
+          CupertinoDialogAction(
+            child: const Text('OK'),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isDarkMode = ref.watch(themeProvider);
@@ -407,7 +426,7 @@ class TransactionDetailsScreen extends ConsumerWidget {
               ),
             ),
           ),
-          // Edit Button
+          // Edit Button - Show for all transaction types but handle payee transactions differently
           Container(
             color: isDarkMode ? AppTheme.backgroundDark : AppTheme.backgroundLight,
             padding: EdgeInsets.only(
@@ -421,6 +440,15 @@ class TransactionDetailsScreen extends ConsumerWidget {
               borderRadius: BorderRadius.circular(30),
               color: backgroundColor,
               onPressed: () async {
+                // Show message if it's a payee transaction
+                if (updatedTransaction.payeeId != null || 
+                    updatedTransaction.fromPayee != null || 
+                    updatedTransaction.toPayee != null) {
+                  _showPayeeEditDisabledMessage(context);
+                  return;
+                }
+                
+                // Otherwise allow editing
                 await Navigator.push(
                   context,
                   CupertinoPageRoute(

@@ -13,6 +13,7 @@ import '../../../core/providers/theme_provider.dart';
 import 'package:flutter/services.dart';
 import '../../../core/widgets/haptic_feedback_wrapper.dart';
 import '../../../core/services/haptic_service.dart';
+import '../../../core/widgets/exit_dialog.dart';
 
 class MainLayoutScreen extends ConsumerStatefulWidget {
   const MainLayoutScreen({super.key});
@@ -182,6 +183,8 @@ class _MainLayoutScreenState extends ConsumerState<MainLayoutScreen>
   }
 
   Future<bool> _onWillPop() async {
+    if (!mounted) return false;
+    
     if (_currentIndex != 0) {
       setState(() {
         _currentIndex = 0;
@@ -189,41 +192,34 @@ class _MainLayoutScreenState extends ConsumerState<MainLayoutScreen>
       });
       return false;
     }
-
-    return await showCupertinoDialog<bool>(
-      context: context,
-      builder: (context) => CupertinoAlertDialog(
-        title: const Text('Exit App'),
-        content: const Text('Are you sure you want to exit?'),
-        actions: [
-          CupertinoDialogAction(
-            isDestructiveAction: true,
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          CupertinoDialogAction(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Exit'),
-          ),
-        ],
-      ),
-    ) ?? false;
+    
+    final shouldPop = await ExitDialog.show(context);
+    if (shouldPop ?? false) {
+      SystemNavigator.pop();
+      return true;
+    }
+    return false;
   }
 
   @override
   Widget build(BuildContext context) {
     final isDarkMode = ref.watch(themeProvider);
 
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: isDarkMode ? Brightness.light : Brightness.dark,
-        statusBarBrightness: isDarkMode ? Brightness.dark : Brightness.light,
-        systemNavigationBarColor: Colors.transparent,
-        systemNavigationBarIconBrightness: isDarkMode ? Brightness.light : Brightness.dark,
-      ),
-      child: WillPopScope(
-        onWillPop: _onWillPop,
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) async {
+        if (didPop) return;
+        
+        final shouldPop = await _onWillPop();
+      },
+      child: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: isDarkMode ? Brightness.light : Brightness.dark,
+          statusBarBrightness: isDarkMode ? Brightness.dark : Brightness.light,
+          systemNavigationBarColor: Colors.transparent,
+          systemNavigationBarIconBrightness: isDarkMode ? Brightness.light : Brightness.dark,
+        ),
         child: CupertinoPageScaffold(
           backgroundColor: isDarkMode ? AppTheme.backgroundDark : AppTheme.backgroundLight,
           child: Stack(

@@ -862,8 +862,13 @@ class _BaseTransactionScreenState extends ConsumerState<BaseTransactionScreen> {
           _spacing,
           _buildWalletSelector(isDarkMode),
           _spacing,
-          _buildPayeeSelector(isDarkMode),
-          _spacing,
+          if (widget.type == TransactionType.transfer)
+            Column(
+              children: [
+                _buildPayeeSelector(isDarkMode),
+                _spacing,
+              ],
+            ),
           RepaintBoundary(child: _buildAttachmentSection(isDarkMode)),
           _largeSpacing,
           RepaintBoundary(child: _buildRepeatSection(isDarkMode)),

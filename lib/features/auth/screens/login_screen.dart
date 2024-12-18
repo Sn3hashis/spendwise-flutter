@@ -11,6 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/theme_provider.dart';
 import '../../../core/widgets/haptic_feedback_wrapper.dart';
 import '../../../core/services/haptic_service.dart';
+import 'package:flutter/services.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -45,15 +46,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       return true;
     }
     final shouldPop = await ExitDialog.show(context);
-    return shouldPop ?? false;
+    if (shouldPop ?? false) {
+      SystemNavigator.pop();
+      return true;
+    }
+    return false;
   }
 
   @override
   Widget build(BuildContext context) {
     final isDarkMode = ref.watch(themeProvider);
 
-    return WillPopScope(
-      onWillPop: _onWillPop,
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) async {
+        if (didPop) return;
+        
+        final shouldPop = await _onWillPop();
+      },
       child: SystemUIWrapper(
         child: CupertinoPageScaffold(
           backgroundColor:
