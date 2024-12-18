@@ -43,9 +43,14 @@ dependencies:
   vibration: ^2.0.1
   image_picker: ^1.0.7
   file_picker: ^8.1.6
-  syncfusion_flutter_pdfviewer: ^28.1.33
   flutter_contacts: ^1.1.7
   path_provider: ^2.1.2
+  pdf: ^3.10.7
+  excel: ^4.0.2
+  share_plus: ^7.2.1
+  syncfusion_flutter_pdfviewer: ^24.2.9
+  syncfusion_flutter_pdf: ^24.2.9
+  open_file: ^3.3.2
 
 dev_dependencies:
   flutter_test:

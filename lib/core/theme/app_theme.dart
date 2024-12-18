@@ -19,13 +19,14 @@ class AppTheme {
 
   // Icon Colors Map
   static const Map<String, Color> iconColors = {
-    'account': Color(0xFF007AFF),
-    'settings': Color(0xFF8E8E93),
-    'export': Color(0xFFFF2D55),
-    'category': Color(0xFF34C759),
-    'payees': Color(0xFFFF9500),
-    'lend': Color(0xFF007AFF),
-    'logout': Color(0xFFFF3B30),
+    'account': CupertinoColors.systemBlue,
+    'settings': CupertinoColors.systemGreen,
+    'export': CupertinoColors.systemOrange,
+    'category': CupertinoColors.systemPurple,
+    'payees': CupertinoColors.systemPink,
+    'lend': CupertinoColors.systemYellow,
+    'analytics': CupertinoColors.systemTeal,
+    'logout': CupertinoColors.systemRed,
   };
 
   static CupertinoThemeData getLightTheme() {

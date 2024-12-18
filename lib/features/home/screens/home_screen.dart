@@ -189,7 +189,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = ref.watch(themeProvider);
-    final currentCurrency = ref.watch(currencyProvider);
+    final currentCurrency = ref.watch(currencyProvider).code;
     final size = MediaQuery.of(context).size;
     final transactions = ref.watch(transactionsProvider);
     final recentTransactions = transactions.take(5).toList(); // Show last 5 transactions

@@ -21,6 +21,7 @@ class Transaction {
   final String? payeeId;
   final Payee? fromPayee;
   final Payee? toPayee;
+  final String? note;
 
   const Transaction({
     required this.id,
@@ -39,6 +40,7 @@ class Transaction {
     this.payeeId,
     this.fromPayee,
     this.toPayee,
+    this.note,
   });
 
   Transaction copyWith({
@@ -58,6 +60,7 @@ class Transaction {
     String? payeeId,
     Payee? fromPayee,
     Payee? toPayee,
+    String? note,
   }) {
     return Transaction(
       id: id ?? this.id,
@@ -76,6 +79,7 @@ class Transaction {
       payeeId: payeeId ?? this.payeeId,
       fromPayee: fromPayee ?? this.fromPayee,
       toPayee: toPayee ?? this.toPayee,
+      note: note ?? this.note,
     );
   }
 
@@ -96,6 +100,7 @@ class Transaction {
     'payeeId': payeeId,
     'fromPayee': fromPayee?.toJson(),
     'toPayee': toPayee?.toJson(),
+    'note': note,
   };
 
   factory Transaction.fromJson(Map<String, dynamic> json) => Transaction(
@@ -123,5 +128,6 @@ class Transaction {
     payeeId: json['payeeId'] as String?,
     fromPayee: json['fromPayee'] != null ? Payee.fromJson(json['fromPayee'] as Map<String, dynamic>) : null,
     toPayee: json['toPayee'] != null ? Payee.fromJson(json['toPayee'] as Map<String, dynamic>) : null,
+    note: json['note'] as String?,
   );
 } 

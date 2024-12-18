@@ -81,7 +81,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = ref.watch(themeProvider);
-    final currentCurrency = ref.watch(currencyProvider);
+    final currentCurrency = ref.watch(currencyProvider).code;
     final transactions = ref.watch(transactionsProvider);
     
     // Apply filters to transactions

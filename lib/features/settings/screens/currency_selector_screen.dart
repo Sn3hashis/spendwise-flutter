@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/theme_provider.dart';
 import '../../../core/widgets/haptic_feedback_wrapper.dart';
 import '../../../core/providers/currency_provider.dart';
+import '../../../core/models/currency_model.dart';
 
 class CurrencySelectorScreen extends ConsumerWidget {
   final String selectedCurrency;
@@ -18,14 +19,7 @@ class CurrencySelectorScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isDarkMode = ref.watch(themeProvider);
-    final currencies = [
-      ('\$', 'USD', 'US Dollar'),
-      ('€', 'EUR', 'Euro'),
-      ('£', 'GBP', 'British Pound'),
-      ('¥', 'JPY', 'Japanese Yen'),
-      ('₹', 'INR', 'Indian Rupee'),
-      // Add more currencies as needed
-    ];
+    final currencies = Currency.currencies;
 
     return CupertinoPageScaffold(
       backgroundColor: isDarkMode ? AppTheme.backgroundDark : AppTheme.backgroundLight,
@@ -87,12 +81,12 @@ class CurrencySelectorScreen extends ConsumerWidget {
                     child: ListView.builder(
                       itemCount: currencies.length,
                       itemBuilder: (context, index) {
-                        final (symbol, code, name) = currencies[index];
-                        final isSelected = code == selectedCurrency;
+                        final currency = currencies[index];
+                        final isSelected = currency.code == selectedCurrency;
                         return HapticFeedbackWrapper(
                           onPressed: () async {
-                            await ref.read(currencyProvider.notifier).setCurrency(code);
-                            Navigator.pop(context, code);
+                            await ref.read(currencyProvider.notifier).setCurrency(currency.code);
+                            Navigator.pop(context, currency.code);
                           },
                           child: Container(
                             padding: const EdgeInsets.symmetric(
@@ -118,7 +112,7 @@ class CurrencySelectorScreen extends ConsumerWidget {
                                   ),
                                   child: Center(
                                     child: Text(
-                                      symbol,
+                                      currency.symbol,
                                       style: const TextStyle(
                                         fontSize: 20,
                                         fontWeight: FontWeight.w600,
@@ -132,7 +126,7 @@ class CurrencySelectorScreen extends ConsumerWidget {
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        code,
+                                        currency.code,
                                         style: TextStyle(
                                           fontSize: 17,
                                           fontWeight: FontWeight.w600,
@@ -142,7 +136,7 @@ class CurrencySelectorScreen extends ConsumerWidget {
                                         ),
                                       ),
                                       Text(
-                                        name,
+                                        currency.name,
                                         style: TextStyle(
                                           fontSize: 14,
                                           color: isDarkMode 
@@ -154,9 +148,9 @@ class CurrencySelectorScreen extends ConsumerWidget {
                                   ),
                                 ),
                                 if (isSelected)
-                                  Icon(
+                                  const Icon(
                                     CupertinoIcons.checkmark_alt,
-                                    color: const Color(0xFF007AFF),
+                                    color: Color(0xFF007AFF),
                                     size: 20,
                                   ),
                               ],
