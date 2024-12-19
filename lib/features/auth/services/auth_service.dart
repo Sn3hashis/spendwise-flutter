@@ -8,7 +8,6 @@ import 'package:spendwise/features/auth/providers/pin_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../../features/settings/services/settings_service.dart';
 
 import '../providers/pin_provider.dart';
 import '../providers/user_provider.dart';
@@ -173,10 +172,6 @@ class AuthService {
         
         // Reset security preferences to PIN
         await ref.read(securityPreferencesProvider.notifier).setSecurityMethod(SecurityMethod.pin);
-
-        // Clear settings
-        final settingsService = ref.read(settingsServiceProvider);
-        await settingsService.clearSettings();
       }
       
       // Clear onboarding status
