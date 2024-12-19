@@ -77,20 +77,12 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
   }
 
   Future<void> _handleSignUp() async {
-    if (!_agreedToTerms) {
+    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
       setState(() {
-        _errorMessage = 'Please agree to the Terms of Service';
+        _emailError = 'Please fill in all fields';
       });
       return;
     }
-
-    _validateField(_nameController.text, 'name');
-    _validateField(_emailController.text, 'email');
-    _validateField(_passwordController.text, 'password');
-
-    bool isValid = _nameError == null && _emailError == null && _passwordError == null;
-
-    if (!isValid) return;
 
     setState(() {
       _isLoading = true;
@@ -108,6 +100,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
         CupertinoPageRoute(
           builder: (context) => OtpVerificationScreen(
             email: _emailController.text.trim(),
+            password: _passwordController.text,
           ),
         ),
       );

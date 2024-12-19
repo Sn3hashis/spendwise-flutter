@@ -1,6 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/services.dart';
+import 'package:spendwise/features/auth/services/otp_service.dart';
+import 'package:spendwise/features/auth/services/email_service.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -18,22 +20,51 @@ class AuthService {
   // Stream of auth state changes
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
-  // Email/Password Sign Up
-  Future<UserCredential> signUpWithEmailAndPassword({
+  // Email/Password Sign Up with OTP
+  Future<void> signUpWithEmailAndPassword({
     required String email,
     required String password,
   }) async {
     try {
+      // Create user with email and password
       final userCredential = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
-      
-      // Send email verification
-      await userCredential.user?.sendEmailVerification();
-      return userCredential;
+
+      // Generate and save OTP
+      final otp = OTPService.generateOTP();
+      await OTPService.saveOTP(email, otp);
+
+      // Send OTP email
+      await EmailService.sendOTPEmail(email, otp);
+
+      // Sign out until verified
+      await _auth.signOut();
     } on FirebaseAuthException catch (e) {
       throw _handleFirebaseAuthError(e);
+    }
+  }
+
+  // Verify OTP
+  Future<UserCredential> verifyOTP({
+    required String email,
+    required String otp,
+    required String password,
+  }) async {
+    try {
+      final isValid = await OTPService.verifyOTP(email, otp);
+      if (!isValid) {
+        throw 'Invalid or expired OTP';
+      }
+
+      // If OTP is valid, sign in the user
+      return await signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+    } catch (e) {
+      throw e.toString();
     }
   }
 

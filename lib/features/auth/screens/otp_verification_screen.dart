@@ -1,27 +1,35 @@
 import 'dart:async';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lottie/lottie.dart';
 import '../../../core/widgets/system_ui_wrapper.dart';
 import 'pin_entry_screen.dart';
+import '../services/auth_service.dart';
 
-class OtpVerificationScreen extends StatefulWidget {
+class OtpVerificationScreen extends ConsumerStatefulWidget {
   final String email;
+  final String password;  // Add password parameter
 
   const OtpVerificationScreen({
-    super.key,
     required this.email,
+    required this.password,  // Add to constructor
+    super.key,
   });
 
   @override
-  State<OtpVerificationScreen> createState() => _OtpVerificationScreenState();
+  ConsumerState<OtpVerificationScreen> createState() => _OtpVerificationScreenState();
 }
 
-class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
-  final int otpLength = 6;
+class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
+  final AuthService _authService = AuthService();
   String currentOtp = '';
-  String? errorMessage;
-  int timeLeft = 299; // 4:59 in seconds
-  late Timer timer;
+  int timeLeft = 299; // 5 minutes in seconds
+  Timer? timer;
+  bool _isLoading = false;
+  String? _error;
+  
+  static const int otpLength = 6;
+  final double boxSize = 50;
 
   @override
   void initState() {
@@ -31,11 +39,12 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
 
   @override
   void dispose() {
-    timer.cancel();
+    timer?.cancel();
     super.dispose();
   }
 
   void startTimer() {
+    timer?.cancel();
     timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (timeLeft > 0) {
         setState(() {
@@ -57,11 +66,10 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     if (currentOtp.length < otpLength) {
       setState(() {
         currentOtp += number;
-        errorMessage = null;
       });
 
       if (currentOtp.length == otpLength) {
-        _handleOtpComplete();
+        _verifyOtp();
       }
     }
   }
@@ -70,19 +78,44 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     if (currentOtp.isNotEmpty) {
       setState(() {
         currentOtp = currentOtp.substring(0, currentOtp.length - 1);
-        errorMessage = null;
       });
     }
   }
 
-  void _handleOtpComplete() {
-    // TODO: Verify OTP
-    Navigator.pushReplacement(
-      context,
-      CupertinoPageRoute(
-        builder: (context) => const PinEntryScreen(mode: PinEntryMode.setup),
-      ),
-    );
+  Future<void> _verifyOtp() async {
+    if (_isLoading) return;
+
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      await _authService.verifyOTP(
+        email: widget.email,
+        otp: currentOtp,
+        password: widget.password,
+      );
+
+      if (!mounted) return;
+
+      Navigator.of(context).pushReplacement(
+        CupertinoPageRoute(
+          builder: (context) => const PinEntryScreen(mode: PinEntryMode.setup),
+        ),
+      );
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        currentOtp = '';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
