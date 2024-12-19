@@ -1,9 +1,16 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
+import '../services/settings_service.dart';
 import '../../auth/providers/security_preferences_provider.dart';
 
 final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
   throw UnimplementedError();
+});
+
+final settingsServiceProvider = Provider<SettingsService>((ref) {
+  final prefs = ref.watch(sharedPreferencesProvider);
+  return SettingsService(prefs);
 });
 
 class Settings {
@@ -40,47 +47,110 @@ class Settings {
       notifications: notifications ?? this.notifications,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'theme': theme,
+      'currency': currency,
+      'language': language,
+      'haptics': haptics,
+      'security': security,
+      'notifications': notifications,
+    };
+  }
 }
 
 class SettingsNotifier extends StateNotifier<Settings> {
-  final SharedPreferences _prefs;
+  final SettingsService _settingsService;
+  final Ref _ref;
 
-  SettingsNotifier(this._prefs)
-      : super(Settings(
-          theme: _prefs.getString('theme') ?? 'System',
-          currency: _prefs.getString('currency') ?? 'USD',
-          language: _prefs.getString('language') ?? 'English',
-          haptics: _prefs.getString('haptics') ?? 'On',
-          security: _prefs.getString('security') ?? 'Off',
-          notifications: _prefs.getString('notifications') ?? 'On',
-        ));
+  SettingsNotifier(this._settingsService, this._ref) : super(Settings()) {
+    _initializeSettings();
+  }
+
+  Future<void> _initializeSettings() async {
+    try {
+      final settings = await _settingsService.loadSettings();
+      state = Settings(
+        theme: settings['theme'] ?? 'System',
+        currency: settings['currency'] ?? 'USD',
+        language: settings['language'] ?? 'English',
+        haptics: settings['haptics'] ?? 'On',
+        security: settings['security'] ?? 'Off',
+        notifications: settings['notifications'] ?? 'On',
+      );
+    } catch (e) {
+      debugPrint('Error initializing settings: $e');
+    }
+  }
 
   Future<void> updateTheme(String theme) async {
-    await _prefs.setString('theme', theme);
-    state = state.copyWith(theme: theme);
+    try {
+      await _settingsService.updateSettings({
+        ...state.toJson(),
+        'theme': theme,
+      });
+      state = state.copyWith(theme: theme);
+    } catch (e) {
+      debugPrint('Error updating theme: $e');
+      rethrow;
+    }
   }
 
   Future<void> updateCurrency(String currency) async {
-    await _prefs.setString('currency', currency);
-    state = state.copyWith(currency: currency);
+    try {
+      await _settingsService.updateSettings({
+        ...state.toJson(),
+        'currency': currency,
+      });
+      state = state.copyWith(currency: currency);
+    } catch (e) {
+      debugPrint('Error updating currency: $e');
+      rethrow;
+    }
   }
 
   Future<void> updateLanguage(String language) async {
-    await _prefs.setString('language', language);
-    state = state.copyWith(language: language);
+    try {
+      await _settingsService.updateSettings({
+        ...state.toJson(),
+        'language': language,
+      });
+      state = state.copyWith(language: language);
+    } catch (e) {
+      debugPrint('Error updating language: $e');
+      rethrow;
+    }
   }
 
   Future<void> updateHaptics(String haptics) async {
-    await _prefs.setString('haptics', haptics);
-    state = state.copyWith(haptics: haptics);
+    try {
+      await _settingsService.updateSettings({
+        ...state.toJson(),
+        'haptics': haptics,
+      });
+      state = state.copyWith(haptics: haptics);
+    } catch (e) {
+      debugPrint('Error updating haptics: $e');
+      rethrow;
+    }
   }
 
   Future<void> updateSecurity(String method) async {
-    state = state.copyWith(security: method);
+    try {
+      await _settingsService.updateSettings({
+        ...state.toJson(),
+        'security': method,
+      });
+      state = state.copyWith(security: method);
+    } catch (e) {
+      debugPrint('Error updating security: $e');
+      rethrow;
+    }
   }
 
-  String getCurrentSecurityMethod(WidgetRef ref) {
-    final securityMethod = ref.read(securityPreferencesProvider);
+  String getCurrentSecurityMethod() {
+    final securityMethod = _ref.read(securityPreferencesProvider);
     switch (securityMethod) {
       case SecurityMethod.biometric:
         return 'Biometric';
@@ -90,13 +160,20 @@ class SettingsNotifier extends StateNotifier<Settings> {
   }
 
   Future<void> updateNotifications(String notifications) async {
-    await _prefs.setString('notifications', notifications);
-    state = state.copyWith(notifications: notifications);
+    try {
+      await _settingsService.updateSettings({
+        ...state.toJson(),
+        'notifications': notifications,
+      });
+      state = state.copyWith(notifications: notifications);
+    } catch (e) {
+      debugPrint('Error updating notifications: $e');
+      rethrow;
+    }
   }
 }
 
-final settingsProvider =
-    StateNotifierProvider<SettingsNotifier, Settings>((ref) {
-  final prefs = ref.watch(sharedPreferencesProvider);
-  return SettingsNotifier(prefs);
+final settingsProvider = StateNotifierProvider<SettingsNotifier, Settings>((ref) {
+  final settingsService = ref.watch(settingsServiceProvider);
+  return SettingsNotifier(settingsService, ref);
 }); 

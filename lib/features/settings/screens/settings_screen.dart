@@ -19,7 +19,7 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsProvider);
-    final isDarkMode = ref.watch(currentThemeProvider);
+    final isDarkMode = ref.watch(themeProvider);
 
     return SystemUIWrapper(
       child: CupertinoPageScaffold(
@@ -165,7 +165,7 @@ class SettingsScreen extends ConsumerWidget {
                               icon: CupertinoIcons.shield_fill,
                               iconColor: const Color(0xFFFF3B30),
                               title: 'Security',
-                              value: ref.read(settingsProvider.notifier).getCurrentSecurityMethod(ref).toString(),
+                              value: ref.read(settingsProvider.notifier).getCurrentSecurityMethod(),
                               isDarkMode: isDarkMode,
                               onTap: () async {
                                 final result = await Navigator.push(
