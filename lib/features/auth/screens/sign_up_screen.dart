@@ -8,8 +8,10 @@ import 'otp_verification_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/theme_provider.dart';
 import '../../../core/services/haptic_service.dart';
+import '../../../core/widgets/haptic_feedback_wrapper.dart';
 import 'pin_entry_screen.dart';
 import '../services/auth_service.dart';
+import '../../../core/services/toast_service.dart';
 
 class SignUpScreen extends ConsumerStatefulWidget {
   const SignUpScreen({super.key});
@@ -80,9 +82,12 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
     if (_emailController.text.isEmpty || 
         _passwordController.text.isEmpty ||
         _nameController.text.isEmpty) {
-      setState(() {
-        _emailError = 'Please fill in all fields';
-      });
+      ToastService.showToast(context, 'Please fill in all fields');
+      return;
+    }
+
+    if (!_agreedToTerms) {
+      ToastService.showToast(context, 'Please agree to the Terms of Service');
       return;
     }
 
@@ -109,9 +114,8 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
         ),
       );
     } catch (e) {
-      setState(() {
-        _emailError = e.toString();
-      });
+      if (!mounted) return;
+      ToastService.showToast(context, e.toString());
     } finally {
       setState(() {
         _isLoading = false;
@@ -136,9 +140,8 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
         ),
       );
     } catch (e) {
-      setState(() {
-        _emailError = e.toString();
-      });
+      if (!mounted) return;
+      ToastService.showToast(context, e.toString());
     } finally {
       setState(() {
         _isLoading = false;
@@ -456,18 +459,18 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                                   ),
                                   const SizedBox(height: 24),
                                   CupertinoButton.filled(
-                                    onPressed: _isLoading ? null : _handleSignUp,
+                                    onPressed: (_isLoading || !_agreedToTerms) ? null : _handleSignUp,
                                     borderRadius: BorderRadius.circular(12),
                                     child: _isLoading
                                         ? const CupertinoActivityIndicator(color: CupertinoColors.white)
                                         : const Padding(
-                                            padding:
-                                                EdgeInsets.symmetric(vertical: 4),
+                                            padding: EdgeInsets.symmetric(vertical: 4),
                                             child: Text(
                                               'Sign Up',
                                               style: TextStyle(
                                                 fontSize: 16,
                                                 fontWeight: FontWeight.w600,
+                                                color: CupertinoColors.white,
                                               ),
                                             ),
                                           ),

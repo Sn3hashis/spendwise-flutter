@@ -13,6 +13,7 @@ import '../../../core/widgets/haptic_feedback_wrapper.dart';
 import '../../../core/services/haptic_service.dart';
 import 'package:flutter/services.dart';
 import '../services/auth_service.dart';
+import '../../../core/services/toast_service.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -38,9 +39,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   void _onLogin() async {
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
-      setState(() {
-        _errorMessage = 'Please fill in all fields';
-      });
+      ToastService.showToast(context, 'Please fill in all fields');
       return;
     }
 
@@ -63,9 +62,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ),
       );
     } catch (e) {
-      setState(() {
-        _errorMessage = e.toString();
-      });
+      if (!mounted) return;
+      ToastService.showToast(context, e.toString());
     } finally {
       if (mounted) {
         setState(() {
@@ -96,15 +94,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
         );
       } else {
-        setState(() {
-          _errorMessage = 'Failed to sign in with Google';
-        });
+        ToastService.showToast(context, 'Failed to sign in with Google');
       }
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        _errorMessage = e.toString();
-      });
+      ToastService.showToast(context, e.toString());
     } finally {
       if (mounted) {
         setState(() {
@@ -133,271 +127,266 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     return PopScope(
       canPop: false,
       onPopInvoked: (didPop) async {
-        if (didPop) return;
-        
-        final shouldPop = await _onWillPop();
+        if (!didPop) {
+          final shouldPop = await _onWillPop();
+          if (shouldPop) {
+            SystemNavigator.pop();
+          }
+        }
       },
       child: SystemUIWrapper(
         child: CupertinoPageScaffold(
-          backgroundColor:
-              isDarkMode ? CupertinoColors.black : CupertinoColors.white,
+          backgroundColor: isDarkMode ? CupertinoColors.black : CupertinoColors.white,
           child: Column(
             children: [
               Expanded(
-                child: Column(
-                  children: [
-                    Expanded(
-                      flex: 2,
-                      child: Center(
-                        child: Lottie.asset(
-                          'assets/animations/login_animation.json',
-                          height: 200,
-                          width: 200,
-                          fit: BoxFit.contain,
-                        ),
-                      ),
+                flex: 2,
+                child: Center(
+                  child: Lottie.asset(
+                    'assets/animations/login_animation.json',
+                    height: 200,
+                    width: 200,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
+              Expanded(
+                flex: 3,
+                child: Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: isDarkMode
+                        ? CupertinoColors.systemGrey6.darkColor
+                        : CupertinoColors.systemGrey6,
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(30),
+                      topRight: Radius.circular(30),
                     ),
-                    Expanded(
-                      flex: 3,
-                      child: Container(
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: isDarkMode
-                              ? CupertinoColors.systemGrey6.darkColor
-                              : CupertinoColors.systemGrey6,
-                          borderRadius: const BorderRadius.only(
-                            topLeft: Radius.circular(30),
-                            topRight: Radius.circular(30),
+                  ),
+                  child: SingleChildScrollView(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            decoration: BoxDecoration(
+                              color: isDarkMode
+                                  ? CupertinoColors.black
+                                  : CupertinoColors.white,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 8),
+                            child: CupertinoTextField.borderless(
+                              controller: _emailController,
+                              placeholder: 'Email',
+                              prefix: const Icon(
+                                CupertinoIcons.mail,
+                                color: CupertinoColors.systemGrey,
+                              ),
+                              padding: const EdgeInsets.all(12),
+                              keyboardType: TextInputType.emailAddress,
+                              style: TextStyle(
+                                color: isDarkMode
+                                    ? CupertinoColors.white
+                                    : CupertinoColors.black,
+                              ),
+                              placeholderStyle: const TextStyle(
+                                color: CupertinoColors.systemGrey,
+                              ),
+                            ),
                           ),
-                        ),
-                        child: SingleChildScrollView(
-                          child: Padding(
-                            padding: const EdgeInsets.all(24.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  decoration: BoxDecoration(
-                                    color: isDarkMode
-                                        ? CupertinoColors.black
-                                        : CupertinoColors.white,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 16, vertical: 8),
-                                  child: CupertinoTextField.borderless(
-                                    controller: _emailController,
-                                    placeholder: 'Email',
-                                    prefix: const Icon(
-                                      CupertinoIcons.mail,
-                                      color: CupertinoColors.systemGrey,
+                          const SizedBox(height: 16),
+                          Container(
+                            decoration: BoxDecoration(
+                              color: isDarkMode
+                                  ? CupertinoColors.black
+                                  : CupertinoColors.white,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 8),
+                            child: CupertinoTextField.borderless(
+                              controller: _passwordController,
+                              placeholder: 'Password',
+                              prefix: const Icon(
+                                CupertinoIcons.lock,
+                                color: CupertinoColors.systemGrey,
+                              ),
+                              suffix: GestureDetector(
+                                onTap: () async {
+                                  await HapticService.lightImpact(ref);
+                                  setState(() {
+                                    _isPasswordVisible =
+                                        !_isPasswordVisible;
+                                  });
+                                },
+                                child: Icon(
+                                  _isPasswordVisible
+                                      ? CupertinoIcons.eye_slash
+                                      : CupertinoIcons.eye,
+                                  color: CupertinoColors.systemGrey,
+                                ),
+                              ),
+                              padding: const EdgeInsets.all(12),
+                              obscureText: !_isPasswordVisible,
+                              style: TextStyle(
+                                color: isDarkMode
+                                    ? CupertinoColors.white
+                                    : CupertinoColors.black,
+                              ),
+                              placeholderStyle: const TextStyle(
+                                color: CupertinoColors.systemGrey,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              CupertinoButton(
+                                padding: const EdgeInsets.symmetric(horizontal: 5),
+                                onPressed: () async {
+                                  await HapticService.lightImpact(ref);
+                                  Navigator.of(context).push(
+                                    CupertinoPageRoute(
+                                      builder: (context) => const ForgotPasswordScreen(),
                                     ),
-                                    padding: const EdgeInsets.all(12),
-                                    keyboardType: TextInputType.emailAddress,
+                                  );
+                                },
+                                child: const Text(
+                                  'Forgot password ?',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 0),
+                          if (_errorMessage != null) ...[
+                            const SizedBox(height: 2),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              child: Text(
+                                _errorMessage!,
+                                style: const TextStyle(
+                                  color: CupertinoColors.destructiveRed,
+                                  fontSize: 14,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 24),
+                          HapticFeedbackWrapper(
+                            onPressed: _isLoading ? () {} : _onLogin,
+                            child: CupertinoButton.filled(
+                              onPressed: _isLoading ? () {} : _onLogin,
+                              borderRadius: BorderRadius.circular(12),
+                              child: _isLoading
+                                  ? const CupertinoActivityIndicator(color: CupertinoColors.white)
+                                  : const Text('LOGIN'),
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          Row(
+                            children: [
+                              const Expanded(
+                                child: Divider(
+                                  color: CupertinoColors.systemGrey4,
+                                ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16),
+                                child: Text(
+                                  'Or',
+                                  style: TextStyle(
+                                    color: CupertinoColors.systemGrey,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                              const Expanded(
+                                child: Divider(
+                                  color: CupertinoColors.systemGrey4,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 24),
+                          HapticFeedbackWrapper(
+                            onPressed: _isLoading ? () {} : () => _handleGoogleSignIn(),
+                            child: CupertinoButton(
+                              onPressed: _isLoading ? () {} : () => _handleGoogleSignIn(),
+                              color: isDarkMode
+                                  ? CupertinoColors.black
+                                  : CupertinoColors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 12),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  SvgPicture.asset(
+                                    'assets/images/google_logo.svg',
+                                    height: 24,
+                                    width: 24,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    'Sign in with Google',
                                     style: TextStyle(
                                       color: isDarkMode
                                           ? CupertinoColors.white
                                           : CupertinoColors.black,
-                                    ),
-                                    placeholderStyle: const TextStyle(
-                                      color: CupertinoColors.systemGrey,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                                Container(
-                                  decoration: BoxDecoration(
-                                    color: isDarkMode
-                                        ? CupertinoColors.black
-                                        : CupertinoColors.white,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 16, vertical: 8),
-                                  child: CupertinoTextField.borderless(
-                                    controller: _passwordController,
-                                    placeholder: 'Password',
-                                    prefix: const Icon(
-                                      CupertinoIcons.lock,
-                                      color: CupertinoColors.systemGrey,
-                                    ),
-                                    suffix: GestureDetector(
-                                      onTap: () async {
-                                        await HapticService.lightImpact(ref);
-                                        setState(() {
-                                          _isPasswordVisible =
-                                              !_isPasswordVisible;
-                                        });
-                                      },
-                                      child: Icon(
-                                        _isPasswordVisible
-                                            ? CupertinoIcons.eye_slash
-                                            : CupertinoIcons.eye,
-                                        color: CupertinoColors.systemGrey,
-                                      ),
-                                    ),
-                                    padding: const EdgeInsets.all(12),
-                                    obscureText: !_isPasswordVisible,
-                                    style: TextStyle(
-                                      color: isDarkMode
-                                          ? CupertinoColors.white
-                                          : CupertinoColors.black,
-                                    ),
-                                    placeholderStyle: const TextStyle(
-                                      color: CupertinoColors.systemGrey,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 10),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.end,
-                                  children: [
-                                    CupertinoButton(
-                                      padding: EdgeInsets.symmetric(horizontal: 5),
-                                      onPressed: () async {
-                                        await HapticService.lightImpact(ref);
-                                        Navigator.of(context).push(
-                                          CupertinoPageRoute(
-                                            builder: (context) =>
-                                                const ForgotPasswordScreen(),
-                                          ),
-                                        );
-                                      },
-                                      child: const Text(
-                                        'Forgot password ?',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 24),
-                                if (_errorMessage != null) ...[
-                                  const SizedBox(height: 8),
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                                    child: Text(
-                                      _errorMessage!,
-                                      style: const TextStyle(
-                                        color: CupertinoColors.destructiveRed,
-                                        fontSize: 14,
-                                      ),
-                                      textAlign: TextAlign.center,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
                                     ),
                                   ),
                                 ],
-                                const SizedBox(height: 24),
-                                HapticFeedbackWrapper(
-                                  onPressed: _isLoading ? () {} : _onLogin,
-                                  child: CupertinoButton.filled(
-                                    onPressed: _isLoading ? () {} : _onLogin,
-                                    borderRadius: BorderRadius.circular(12),
-                                    child: _isLoading
-                                        ? const CupertinoActivityIndicator(color: CupertinoColors.white)
-                                        : const Text('LOGIN'),
-                                  ),
-                                ),
-                                const SizedBox(height: 24),
-                                Row(
-                                  children: [
-                                    const Expanded(
-                                      child: Divider(
-                                        color: CupertinoColors.systemGrey4,
-                                      ),
-                                    ),
-                                    Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 16),
-                                      child: Text(
-                                        'Or',
-                                        style: TextStyle(
-                                          color: CupertinoColors.systemGrey,
-                                          fontSize: 14,
-                                        ),
-                                      ),
-                                    ),
-                                    const Expanded(
-                                      child: Divider(
-                                        color: CupertinoColors.systemGrey4,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 24),
-                                HapticFeedbackWrapper(
-                                  onPressed: _isLoading ? () {} : _handleGoogleSignIn,
-                                  child: CupertinoButton(
-                                    onPressed: _isLoading ? () {} : _handleGoogleSignIn,
-                                    color: isDarkMode
-                                        ? CupertinoColors.black
-                                        : CupertinoColors.white,
-                                    borderRadius: BorderRadius.circular(12),
-                                    padding:
-                                        const EdgeInsets.symmetric(vertical: 12),
-                                    child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        SvgPicture.asset(
-                                          'assets/images/google_logo.svg',
-                                          height: 24,
-                                          width: 24,
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Text(
-                                          'Sign in with Google',
-                                          style: TextStyle(
-                                            color: isDarkMode
-                                                ? CupertinoColors.white
-                                                : CupertinoColors.black,
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 24),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      "Don't have an account? ",
-                                      style: TextStyle(
-                                        color: CupertinoColors.systemGrey,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                    HapticFeedbackWrapper(
-                                      onPressed: () {
-                                        Navigator.of(context).push(
-                                          CupertinoPageRoute(
-                                            builder: (context) =>
-                                                const SignUpScreen(),
-                                          ),
-                                        );
-                                      },
-                                      child: const Text(
-                                        'Sign Up',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 24),
-                              ],
+                              ),
                             ),
                           ),
-                        ),
+                          const SizedBox(height: 24),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                "Don't have an account? ",
+                                style: TextStyle(
+                                  color: CupertinoColors.systemGrey,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              HapticFeedbackWrapper(
+                                onPressed: () {
+                                  Navigator.of(context).push(
+                                    CupertinoPageRoute(
+                                      builder: (context) =>
+                                          const SignUpScreen(),
+                                    ),
+                                  );
+                                },
+                                child: const Text(
+                                  'Sign Up',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 24),
+                        ],
                       ),
                     ),
-                  ],
+                  ),
                 ),
               ),
             ],
