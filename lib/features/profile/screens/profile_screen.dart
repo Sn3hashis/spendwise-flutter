@@ -7,6 +7,8 @@ import '../../categories/screens/categories_screen.dart';
 import '../../settings/screens/settings_screen.dart';
 import '../../payees/screens/manage_payees_screen.dart';
 import '../../analytics/screens/analytics_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../../auth/providers/user_provider.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -14,6 +16,7 @@ class ProfileScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isDarkMode = ref.watch(themeProvider);
+    final user = ref.watch(userProvider);
 
     return CupertinoPageScaffold(
       backgroundColor: isDarkMode ? AppTheme.backgroundDark : AppTheme.backgroundLight,
@@ -34,28 +37,41 @@ class ProfileScreen extends ConsumerWidget {
               ),
               child: Row(
                 children: [
-                  Container(
-                    width: 64,
-                    height: 64,
-                    decoration: BoxDecoration(
-                      color: isDarkMode ? CupertinoColors.white : const Color(0xFFF2F2F7),
-                      shape: BoxShape.circle,
+                  if (user?.photoURL != null)
+                    Container(
+                      width: 64,
+                      height: 64,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        image: DecorationImage(
+                          image: NetworkImage(user!.photoURL!),
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    )
+                  else
+                    Container(
+                      width: 64,
+                      height: 64,
+                      decoration: BoxDecoration(
+                        color: isDarkMode ? CupertinoColors.white : const Color(0xFFF2F2F7),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        CupertinoIcons.person_fill,
+                        size: 32,
+                        color: isDarkMode 
+                            ? CupertinoColors.systemGrey 
+                            : const Color(0xFF8E8E93),
+                      ),
                     ),
-                    child: Icon(
-                      CupertinoIcons.person_fill,
-                      size: 32,
-                      color: isDarkMode 
-                          ? CupertinoColors.systemGrey 
-                          : const Color(0xFF8E8E93),
-                    ),
-                  ),
                   const SizedBox(width: 16),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Iriana Saliha',
+                          user?.displayName ?? 'User',
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.w600,
@@ -66,7 +82,7 @@ class ProfileScreen extends ConsumerWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'iriana.saliha@example.com',
+                          user?.email ?? 'No email',
                           style: TextStyle(
                             fontSize: 14,
                             color: isDarkMode 

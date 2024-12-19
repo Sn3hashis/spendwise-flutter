@@ -122,6 +122,12 @@ class AuthService {
         throw 'Failed to sign in with Google';
       }
 
+      // Ensure display name and photo URL are set
+      if (userCredential.user != null) {
+        await userCredential.user!.updateDisplayName(googleUser.displayName);
+        await userCredential.user!.updatePhotoURL(googleUser.photoUrl);
+      }
+
       return userCredential;
     } on FirebaseAuthException catch (e) {
       await _handleSignOutError();
