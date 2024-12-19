@@ -1,4 +1,4 @@
-package com.example.spendwise
+package me.sm.spendwise
 
 import io.flutter.embedding.android.FlutterActivity
 
