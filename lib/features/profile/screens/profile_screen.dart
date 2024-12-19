@@ -3,15 +3,64 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/providers/theme_provider.dart';
 import '../../../core/services/haptic_service.dart';
+import '../../../core/widgets/haptic_feedback_wrapper.dart';
+import '../../../core/services/toast_service.dart';
+import '../../auth/screens/login_screen.dart';
+import '../../auth/providers/user_provider.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../categories/screens/categories_screen.dart';
 import '../../settings/screens/settings_screen.dart';
 import '../../payees/screens/manage_payees_screen.dart';
 import '../../analytics/screens/analytics_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../../auth/providers/user_provider.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
+
+  Future<void> _handleLogout(BuildContext context, WidgetRef ref) async {
+    final shouldLogout = await showCupertinoDialog<bool>(
+      context: context,
+      builder: (context) => CupertinoAlertDialog(
+        title: const Text('Logout'),
+        content: const Text('Are you sure you want to logout?'),
+        actions: [
+          CupertinoDialogAction(
+            isDestructiveAction: true,
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Logout'),
+          ),
+          CupertinoDialogAction(
+            isDefaultAction: true,
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldLogout != true || !context.mounted) return;
+
+    try {
+      await HapticService.lightImpact(ref);
+      await ref.read(authServiceProvider).signOut(ref);
+      
+      if (!context.mounted) return;
+      
+      // Navigate to login screen and clear all routes
+      Navigator.of(context).pushAndRemoveUntil(
+        CupertinoPageRoute(
+          builder: (context) => const LoginScreen(),
+        ),
+        (route) => false,
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ToastService.showToast(
+        context, 
+        'Failed to logout: ${e.toString()}',
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -184,17 +233,50 @@ class ProfileScreen extends ConsumerWidget {
                       );
                     },
                   ),
-                  _buildMenuItem(
-                    context: context,
-                    ref: ref,
-                    icon: CupertinoIcons.arrow_right_circle,
-                    iconColor: AppTheme.iconColors['logout']!,
-                    title: 'Logout',
-                    isDarkMode: isDarkMode,
-                    showDivider: false,
-                    onTap: () {},
-                  ),
+                  // _buildMenuItem(
+                  //   context: context,
+                  //   ref: ref,
+                  //   icon: CupertinoIcons.arrow_right_circle,
+                  //   iconColor: AppTheme.iconColors['logout']!,
+                  //   title: 'Logout',
+                  //   isDarkMode: isDarkMode,
+                  //   showDivider: false,
+                  //   onTap: () {},
+                  // ),
                 ],
+              ),
+            ),
+            
+            // Logout Button
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: HapticFeedbackWrapper(
+                onPressed: () => _handleLogout(context, ref),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: CupertinoColors.destructiveRed,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        CupertinoIcons.square_arrow_right,
+                        color: CupertinoColors.white,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        'Logout',
+                        style: TextStyle(
+                          color: CupertinoColors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
           ],

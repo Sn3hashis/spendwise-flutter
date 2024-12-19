@@ -14,6 +14,8 @@ import '../../../core/services/haptic_service.dart';
 import 'package:flutter/services.dart';
 import '../services/auth_service.dart';
 import '../../../core/services/toast_service.dart';
+import '../providers/pin_provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -56,9 +58,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       
       if (!mounted) return;
       await HapticService.lightImpact(ref);
+
+      // Load PIN status
+      await ref.read(pinProvider.notifier).loadPin();
+      
+      if (!mounted) return;
       Navigator.of(context).pushReplacement(
         CupertinoPageRoute(
-          builder: (context) => const PinEntryScreen(mode: PinEntryMode.setup),
+          builder: (context) => ref.read(pinProvider) != null
+              ? const PinEntryScreen(mode: PinEntryMode.verify)
+              : const PinEntryScreen(mode: PinEntryMode.setup),
         ),
       );
     } catch (e) {
@@ -88,17 +97,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       
       if (userCredential.user != null) {
         await HapticService.lightImpact(ref);
-        Navigator.of(context).pushReplacement(
-          CupertinoPageRoute(
-            builder: (context) => const PinEntryScreen(mode: PinEntryMode.setup),
-          ),
-        );
+        
+        // Load PIN status after successful sign in
+        await _handleSuccessfulLogin();
       } else {
-        ToastService.showToast(context, 'Failed to sign in with Google');
+        ToastService.showToast(
+          context, 
+          'Failed to sign in with Google. Please try again.',
+        );
       }
     } catch (e) {
+      debugPrint('Google Sign-In error: $e');
       if (!mounted) return;
-      ToastService.showToast(context, e.toString());
+      
+      String errorMessage = 'Failed to sign in with Google';
+      if (e is String) {
+        errorMessage = e;
+      } else if (e is FirebaseAuthException) {
+        errorMessage = e.message ?? errorMessage;
+      }
+      
+      ToastService.showToast(context, errorMessage);
     } finally {
       if (mounted) {
         setState(() {
@@ -118,6 +137,48 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       return true;
     }
     return false;
+  }
+
+  Future<void> _handleSuccessfulLogin() async {
+    try {
+      setState(() {
+        _isLoading = true;
+      });
+
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        throw 'No user found after login';
+      }
+
+      debugPrint('Loading PIN for user: ${user.uid}');
+      await ref.read(pinProvider.notifier).loadPin();
+      
+      if (!mounted) return;
+
+      final pin = ref.read(pinProvider);
+      debugPrint('PIN status after login: ${pin != null ? 'exists' : 'not found'}');
+
+      Navigator.of(context).pushReplacement(
+        CupertinoPageRoute(
+          builder: (context) => pin != null
+              ? const PinEntryScreen(mode: PinEntryMode.verify)
+              : const PinEntryScreen(mode: PinEntryMode.setup),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Error in login flow: $e');
+      if (!mounted) return;
+      ToastService.showToast(
+        context,
+        'Failed to load PIN settings. Please try again.',
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override

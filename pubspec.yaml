@@ -52,8 +52,9 @@ dependencies:
   syncfusion_flutter_pdf: ^24.2.9
   open_file: ^3.3.2
   uuid: ^4.1.0
-  firebase_core: ^2.27.1
-  firebase_auth: ^4.17.9
+  firebase_core: ^2.25.4
+  firebase_auth: ^4.17.4
+  cloud_firestore: ^4.15.4
   google_sign_in: ^6.2.1
   mailer: ^6.1.0
 

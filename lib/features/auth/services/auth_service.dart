@@ -3,6 +3,14 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/services.dart';
 import 'package:spendwise/features/auth/services/otp_service.dart';
 import 'package:spendwise/features/auth/services/email_service.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:spendwise/features/auth/providers/pin_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+import '../providers/pin_provider.dart';
+import '../providers/user_provider.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -96,70 +104,74 @@ class AuthService {
   // Google Sign In
   Future<UserCredential> signInWithGoogle() async {
     try {
-      // Sign out first to ensure clean state
-      await _googleSignIn.signOut();
-      await _auth.signOut();
-
-      // Start the sign-in process
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn()
-          .timeout(const Duration(minutes: 1), onTimeout: () {
-        throw 'Sign in timed out. Please try again.';
-      });
-
+      // Start sign in flow
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) {
         throw 'Google sign in was cancelled';
       }
 
-      // Get authentication details
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication
-          .timeout(const Duration(minutes: 1), onTimeout: () {
-        throw 'Authentication timed out. Please try again.';
-      });
+      // Get auth details
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
 
-      // Create Firebase credential
+      // Create credential
       final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
       // Sign in with Firebase
-      final userCredential = await _auth.signInWithCredential(credential)
-          .timeout(const Duration(minutes: 1), onTimeout: () {
-        throw 'Firebase sign in timed out. Please try again.';
-      });
-
+      final userCredential = await _auth.signInWithCredential(credential);
       if (userCredential.user == null) {
         throw 'Failed to sign in with Google';
       }
 
-      // Ensure display name and photo URL are set
-      if (userCredential.user != null) {
-        await userCredential.user!.updateDisplayName(googleUser.displayName);
-        await userCredential.user!.updatePhotoURL(googleUser.photoUrl);
-      }
+      // Create or update user document in Firestore
+      await _createOrUpdateUserDocument(userCredential.user!);
 
       return userCredential;
-    } on FirebaseAuthException catch (e) {
-      await _handleSignOutError();
-      throw _handleFirebaseAuthError(e);
-    } on PlatformException catch (e) {
-      await _handleSignOutError();
-      throw 'Platform error during Google sign in: ${e.message}';
     } catch (e) {
-      await _handleSignOutError();
-      if (e is String) {
-        throw e;
-      }
-      throw 'Failed to sign in with Google: ${e.toString()}';
+      debugPrint('Error in Google Sign In: $e');
+      rethrow;
     }
   }
 
-  Future<void> _handleSignOutError() async {
+  Future<void> _createOrUpdateUserDocument(User user) async {
     try {
-      await _googleSignIn.signOut();
-      await _auth.signOut();
-    } catch (_) {
-      // Ignore errors during sign out
+      final userDoc = FirebaseFirestore.instance.collection('users').doc(user.uid);
+      
+      // Get existing document
+      final doc = await userDoc.get();
+      
+      if (!doc.exists) {
+        // Create new user document with initial PIN state
+        await userDoc.set({
+          'email': user.email,
+          'displayName': user.displayName,
+          'photoURL': user.photoURL,
+          'createdAt': FieldValue.serverTimestamp(),
+          'lastLogin': FieldValue.serverTimestamp(),
+          'hasPin': false,
+          'pin': null,
+        });
+      } else {
+        // Update existing document but preserve PIN and hasPin
+        final updates = {
+          'lastLogin': FieldValue.serverTimestamp(),
+          'email': user.email,
+          'displayName': user.displayName,
+          'photoURL': user.photoURL,
+        };
+
+        // If PIN exists but hasPin is not set, set it
+        final data = doc.data();
+        if (data != null && data.containsKey('pin') && data['pin'] != null && !(data['hasPin'] as bool? ?? false)) {
+          updates['hasPin'] = true;
+        }
+
+        await userDoc.update(updates);
+      }
+    } catch (e) {
+      debugPrint('Error creating/updating user document: $e');
     }
   }
 
@@ -173,14 +185,29 @@ class AuthService {
   }
 
   // Sign Out
-  Future<void> signOut() async {
+  Future<void> signOut(WidgetRef ref) async {
     try {
-      await Future.wait([
-        _auth.signOut(),
-        _googleSignIn.signOut(),
-      ]);
+      // Only clear PIN from local storage
+      final prefs = await SharedPreferences.getInstance();
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        await prefs.remove('user_pin_${user.uid}');
+      }
+      
+      // Clear onboarding status
+      await prefs.remove('has_completed_onboarding');
+      
+      // Sign out from Google
+      await _googleSignIn.signOut();
+      
+      // Sign out from Firebase
+      await _auth.signOut();
+      
+      // Clear user state
+      ref.read(userProvider.notifier).state = null;
     } catch (e) {
-      throw 'Failed to sign out: ${e.toString()}';
+      debugPrint('Error during sign out: $e');
+      rethrow;
     }
   }
 

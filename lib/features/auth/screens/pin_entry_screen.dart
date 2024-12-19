@@ -7,6 +7,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/theme_provider.dart';
 import '../../../core/widgets/haptic_feedback_wrapper.dart';
 import '../../../core/services/haptic_service.dart';
+import '../providers/pin_provider.dart';
+import '../../../core/services/toast_service.dart';
 
 enum PinEntryMode { setup, verify }
 
@@ -27,14 +29,50 @@ class PinEntryScreen extends ConsumerStatefulWidget {
 class _PinEntryScreenState extends ConsumerState<PinEntryScreen> {
   final int pinLength = 4;
   String currentPin = '';
-  String? errorMessage;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadExistingPin();
+  }
+
+  Future<void> _loadExistingPin() async {
+    if (widget.mode == PinEntryMode.verify) {
+      try {
+        await ref.read(pinProvider.notifier).loadPin();
+        final pin = ref.read(pinProvider);
+        debugPrint('Loaded PIN: ${pin != null ? 'exists' : 'not found'}'); // Debug log
+        
+        if (pin == null) {
+          if (!mounted) return;
+          ToastService.showToast(
+            context,
+            'PIN not found. Please set up a new PIN.',
+          );
+          Navigator.pushReplacement(
+            context,
+            CupertinoPageRoute(
+              builder: (context) => const PinEntryScreen(mode: PinEntryMode.setup),
+            ),
+          );
+        }
+      } catch (e) {
+        debugPrint('Error loading PIN: $e'); // Debug log
+        if (!mounted) return;
+        ToastService.showToast(
+          context,
+          'Failed to load PIN. Please try again.',
+        );
+      }
+    }
+  }
 
   void _onNumberPressed(String number) async {
     await HapticService.lightImpact(ref);
     if (currentPin.length < pinLength) {
       setState(() {
         currentPin += number;
-        errorMessage = null;
       });
 
       if (currentPin.length == pinLength) {
@@ -48,28 +86,38 @@ class _PinEntryScreenState extends ConsumerState<PinEntryScreen> {
     if (currentPin.isNotEmpty) {
       setState(() {
         currentPin = currentPin.substring(0, currentPin.length - 1);
-        errorMessage = null;
       });
     }
   }
 
-  void _handlePinComplete() {
-    if (widget.mode == PinEntryMode.setup) {
-      if (widget.setupConfirmPin == null) {
-        // First time entering PIN
-        Navigator.pushReplacement(
-          context,
-          CupertinoPageRoute(
-            builder: (context) => PinEntryScreen(
-              mode: PinEntryMode.setup,
-              setupConfirmPin: currentPin,
+  void _handlePinComplete() async {
+    if (_isLoading) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      if (widget.mode == PinEntryMode.setup) {
+        if (widget.setupConfirmPin == null) {
+          // First time entering PIN
+          Navigator.pushReplacement(
+            context,
+            CupertinoPageRoute(
+              builder: (context) => PinEntryScreen(
+                mode: PinEntryMode.setup,
+                setupConfirmPin: currentPin,
+              ),
             ),
-          ),
-        );
-      } else {
+          );
+          return;
+        }
+
         // Confirming PIN
         if (currentPin == widget.setupConfirmPin) {
-          // Navigate to main layout
+          await ref.read(pinProvider.notifier).setPin(currentPin);
+          
+          if (!mounted) return;
           Navigator.pushReplacement(
             context,
             CupertinoPageRoute(
@@ -77,21 +125,49 @@ class _PinEntryScreenState extends ConsumerState<PinEntryScreen> {
             ),
           );
         } else {
+          if (!mounted) return;
+          ToastService.showToast(
+            context,
+            'PINs do not match. Please try again.',
+          );
           setState(() {
-            errorMessage = 'PINs do not match. Please try again.';
+            currentPin = '';
+          });
+        }
+      } else {
+        // Verify PIN
+        final storedPin = ref.read(pinProvider);
+        if (currentPin == storedPin) {
+          if (!mounted) return;
+          Navigator.pushReplacement(
+            context,
+            CupertinoPageRoute(
+              builder: (context) => const MainLayoutScreen(),
+            ),
+          );
+        } else {
+          if (!mounted) return;
+          ToastService.showToast(
+            context,
+            'Incorrect PIN. Please try again.',
+          );
+          setState(() {
             currentPin = '';
           });
         }
       }
-    } else {
-      // Verify PIN
-      // TODO: Add PIN verification logic
-      Navigator.pushReplacement(
+    } catch (e) {
+      if (!mounted) return;
+      ToastService.showToast(
         context,
-        CupertinoPageRoute(
-          builder: (context) => const MainLayoutScreen(),
-        ),
+        'An error occurred. Please try again.',
       );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -218,16 +294,6 @@ class _PinEntryScreenState extends ConsumerState<PinEntryScreen> {
                       ),
                     ),
                   ),
-                  if (errorMessage != null) ...[
-                    const SizedBox(height: 12),
-                    Text(
-                      errorMessage!,
-                      style: const TextStyle(
-                        color: CupertinoColors.destructiveRed,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ],
                   const Spacer(),
                   // Reset PIN Button
                   CupertinoButton(
@@ -237,7 +303,6 @@ class _PinEntryScreenState extends ConsumerState<PinEntryScreen> {
                       await HapticService.lightImpact(ref);
                       setState(() {
                         currentPin = '';
-                        errorMessage = null;
                       });
                     },
                     child: Text(

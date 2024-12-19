@@ -32,7 +32,8 @@ def kotlin_version = '1.9.22'
 
 android {
     namespace "me.sm.spendwise"
-    compileSdkVersion 34
+    compileSdkVersion flutter.compileSdkVersion
+    ndkVersion flutter.ndkVersion
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
@@ -41,10 +42,6 @@ android {
 
     kotlinOptions {
         jvmTarget = '17'
-    }
-
-    tasks.withType(JavaCompile) {
-        options.compilerArgs << '-Xlint:-options'
     }
 
     sourceSets {
@@ -66,9 +63,6 @@ android {
             minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
-        debug {
-            signingConfig signingConfigs.debug
-        }
     }
 }
 
@@ -79,7 +73,7 @@ flutter {
 dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
     implementation 'androidx.multidex:multidex:2.0.1'
-    implementation platform('com.google.firebase:firebase-bom:32.7.4')
-    implementation 'com.google.firebase:firebase-analytics'
+    implementation platform('com.google.firebase:firebase-bom:32.7.0')
+    implementation 'com.google.firebase:firebase-auth'
     implementation 'com.google.android.gms:play-services-auth:20.7.0'
 }

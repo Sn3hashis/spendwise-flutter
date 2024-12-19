@@ -12,71 +12,80 @@ import 'core/providers/theme_provider.dart';
 import 'features/settings/providers/settings_provider.dart';
 import 'features/onboarding/screens/onboarding_screen.dart';
 import 'firebase_options.dart';
+import 'features/auth/screens/login_screen.dart';
+import 'features/auth/screens/pin_entry_screen.dart';
+import 'features/auth/providers/user_provider.dart';
+import 'features/auth/providers/pin_provider.dart';
 
-Future<void> main() async {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
   try {
-    WidgetsFlutterBinding.ensureInitialized();
-    
-    // Initialize Firebase with better error handling
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
-    ).catchError((error) {
-      debugPrint('Firebase initialization error: $error');
-      throw error;
-    });
-    
-    // Initialize SharedPreferences
-    final sharedPreferences = await SharedPreferences.getInstance();
-    
-    runApp(
-      ProviderScope(
-        overrides: [
-          sharedPreferencesProvider.overrideWithValue(sharedPreferences),
-        ],
-        child: const MyApp(),
-      ),
     );
   } catch (e) {
-    debugPrint('Error in main: $e');
-    rethrow;
+    debugPrint('Firebase initialization error: $e');
   }
+
+  // Initialize SharedPreferences
+  final prefs = await SharedPreferences.getInstance();
+  final hasCompletedOnboarding = prefs.getBool('has_completed_onboarding') ?? false;
+
+  runApp(
+    ProviderScope(
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+      ],
+      child: MyApp(hasCompletedOnboarding: hasCompletedOnboarding),
+    ),
+  );
 }
 
-@immutable
 class MyApp extends ConsumerStatefulWidget {
-  const MyApp({super.key});
+  final bool hasCompletedOnboarding;
+  
+  const MyApp({
+    required this.hasCompletedOnboarding,
+    super.key,
+  });
 
   @override
   ConsumerState<MyApp> createState() => _MyAppState();
 }
 
 class _MyAppState extends ConsumerState<MyApp> with WidgetsBindingObserver {
-  final _navigatorKey = GlobalKey<NavigatorState>();
-
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _initializeApp();
   }
 
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
-
-  @override
-  void didChangePlatformBrightness() {
-    if (!mounted) return;
-    final brightness = WidgetsBinding.instance.platformDispatcher.platformBrightness;
-    ref.read(platformBrightnessProvider.notifier).state = brightness;
+  Future<void> _initializeApp() async {
+    final user = ref.read(userProvider);
+    if (user != null) {
+      await ref.read(pinProvider.notifier).loadPin();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final isDarkMode = ref.watch(themeProvider);
+    final user = ref.watch(userProvider);
+    final pin = ref.watch(pinProvider);
     
-    SystemUIHelper.setSystemUIOverlayStyle(isDarkMode: isDarkMode);
+    Widget homeWidget;
+    
+    if (!widget.hasCompletedOnboarding) {
+      homeWidget = const OnboardingScreen();
+    } else if (user == null) {
+      homeWidget = const LoginScreen();
+    } else if (pin == null) {
+      homeWidget = const PinEntryScreen(mode: PinEntryMode.setup);
+    } else {
+      homeWidget = const PinEntryScreen(mode: PinEntryMode.verify);
+    }
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle(
@@ -87,24 +96,9 @@ class _MyAppState extends ConsumerState<MyApp> with WidgetsBindingObserver {
         systemNavigationBarIconBrightness: isDarkMode ? Brightness.light : Brightness.dark,
       ),
       child: CupertinoApp(
-        navigatorKey: _navigatorKey,
         debugShowCheckedModeBanner: false,
         theme: isDarkMode ? AppTheme.getDarkTheme() : AppTheme.getLightTheme(),
-        home: const OnboardingScreen(),
-        builder: (context, child) {
-          final platformBrightness = MediaQuery.platformBrightnessOf(context);
-          
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              ref.read(platformBrightnessProvider.notifier).state = platformBrightness;
-            }
-          });
-          
-          return CupertinoTheme(
-            data: isDarkMode ? AppTheme.getDarkTheme() : AppTheme.getLightTheme(),
-            child: child ?? const SizedBox.shrink(),
-          );
-        },
+        home: homeWidget,
       ),
     );
   }
