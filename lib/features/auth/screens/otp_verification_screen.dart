@@ -8,11 +8,13 @@ import '../services/auth_service.dart';
 
 class OtpVerificationScreen extends ConsumerStatefulWidget {
   final String email;
-  final String password;  // Add password parameter
+  final String password;
+  final String name;  // Add name parameter
 
   const OtpVerificationScreen({
     required this.email,
-    required this.password,  // Add to constructor
+    required this.password,
+    required this.name,  // Add to constructor
     super.key,
   });
 
@@ -95,6 +97,7 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
         email: widget.email,
         otp: currentOtp,
         password: widget.password,
+        name: widget.name,  // Pass the name
       );
 
       if (!mounted) return;

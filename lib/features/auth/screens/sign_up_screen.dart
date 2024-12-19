@@ -77,7 +77,9 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
   }
 
   Future<void> _handleSignUp() async {
-    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+    if (_emailController.text.isEmpty || 
+        _passwordController.text.isEmpty ||
+        _nameController.text.isEmpty) {
       setState(() {
         _emailError = 'Please fill in all fields';
       });
@@ -92,6 +94,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
       await _authService.signUpWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text,
+        name: _nameController.text.trim(),
       );
       
       if (!mounted) return;
@@ -101,6 +104,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
           builder: (context) => OtpVerificationScreen(
             email: _emailController.text.trim(),
             password: _passwordController.text,
+            name: _nameController.text.trim(),
           ),
         ),
       );

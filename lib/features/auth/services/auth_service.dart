@@ -24,6 +24,7 @@ class AuthService {
   Future<void> signUpWithEmailAndPassword({
     required String email,
     required String password,
+    required String name,
   }) async {
     try {
       // Create user with email and password
@@ -31,6 +32,9 @@ class AuthService {
         email: email,
         password: password,
       );
+
+      // Update user's display name
+      await userCredential.user?.updateDisplayName(name);
 
       // Generate and save OTP
       final otp = OTPService.generateOTP();
@@ -51,6 +55,7 @@ class AuthService {
     required String email,
     required String otp,
     required String password,
+    required String name,
   }) async {
     try {
       final isValid = await OTPService.verifyOTP(email, otp);
@@ -59,10 +64,15 @@ class AuthService {
       }
 
       // If OTP is valid, sign in the user
-      return await signInWithEmailAndPassword(
+      final userCredential = await signInWithEmailAndPassword(
         email: email,
         password: password,
       );
+
+      // Update user's display name after successful verification
+      await userCredential.user?.updateDisplayName(name);
+
+      return userCredential;
     } catch (e) {
       throw e.toString();
     }
