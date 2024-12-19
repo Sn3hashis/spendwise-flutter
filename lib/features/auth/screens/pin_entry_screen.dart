@@ -10,6 +10,7 @@ import '../../../core/services/haptic_service.dart';
 import '../providers/pin_provider.dart';
 import '../../../core/services/toast_service.dart';
 import '../../../core/theme/app_theme.dart';
+import '../services/biometric_service.dart';
 
 enum PinEntryMode { setup, verify }
 
@@ -303,27 +304,6 @@ class _PinEntryScreenState extends ConsumerState<PinEntryScreen> {
                       ),
                     ),
                     const Spacer(),
-                    // Reset PIN Button
-                    CupertinoButton(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      onPressed: () async {
-                        await HapticService.lightImpact(ref);
-                        setState(() {
-                          currentPin = '';
-                        });
-                      },
-                      child: Text(
-                        'Reset PIN',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: isDarkMode
-                              ? CupertinoColors.white
-                              : CupertinoColors.black,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
                     // Keypad
                     Container(
                       width: double.infinity,
@@ -338,8 +318,7 @@ class _PinEntryScreenState extends ConsumerState<PinEntryScreen> {
                             Container(
                               height: 55,
                               margin: EdgeInsets.only(
-                                bottom:
-                                    i == 3 ? 24 : 8, // More space after last row
+                                bottom: i == 3 ? 24 : 8,
                               ),
                               child: Row(
                                 children: i < 3
@@ -352,7 +331,12 @@ class _PinEntryScreenState extends ConsumerState<PinEntryScreen> {
                                         ),
                                       )
                                     : [
-                                        Expanded(child: _buildBiometricButton()),
+                                        Expanded(
+                                          child: widget.mode == PinEntryMode.verify && 
+                                                 widget.message == null
+                                              ? _buildBiometricButton()
+                                              : const SizedBox(),
+                                        ),
                                         Expanded(child: _buildNumberButton('0')),
                                         Expanded(child: _buildBackspaceButton()),
                                       ],
@@ -429,18 +413,44 @@ class _PinEntryScreenState extends ConsumerState<PinEntryScreen> {
 
   Widget _buildBiometricButton() {
     return HapticFeedbackWrapper(
-      onPressed: () {
-        // TODO: Implement biometric authentication
+      onPressed: () async {
+        await HapticService.lightImpact(ref);
+        final (authenticated, error) = await BiometricService.authenticate();
+        if (!mounted) return;
+        
+        if (authenticated) {
+          Navigator.pushReplacement(
+            context,
+            CupertinoPageRoute(
+              builder: (context) => const MainLayoutScreen(),
+            ),
+          );
+        } else if (error != null) {
+          ToastService.showToast(context, error);
+        }
       },
       child: Container(
         height: 55,
         child: CupertinoButton(
           padding: EdgeInsets.zero,
-          onPressed: () {
-            // TODO: Implement biometric authentication
+          onPressed: () async {
+            await HapticService.lightImpact(ref);
+            final (authenticated, error) = await BiometricService.authenticate();
+            if (!mounted) return;
+            
+            if (authenticated) {
+              Navigator.pushReplacement(
+                context,
+                CupertinoPageRoute(
+                  builder: (context) => const MainLayoutScreen(),
+                ),
+              );
+            } else if (error != null) {
+              ToastService.showToast(context, error);
+            }
           },
           child: const Icon(
-            CupertinoIcons.flag_circle,
+            CupertinoIcons.person_crop_circle,
             size: 28,
           ),
         ),

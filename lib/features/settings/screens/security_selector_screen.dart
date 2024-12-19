@@ -63,8 +63,13 @@ class _SecuritySelectorScreenState extends ConsumerState<SecuritySelectorScreen>
 
           try {
             if (method == SecurityMethod.biometric) {
-              final authenticated = await BiometricService.authenticate();
-              if (!authenticated) return;
+              final (authenticated, error) = await BiometricService.authenticate();
+              if (!authenticated) {
+                if (error != null) {
+                  ToastService.showToast(context, error);
+                }
+                return;
+              }
               
               await ref.read(securityPreferencesProvider.notifier).setSecurityMethod(method);
             } else if (method == SecurityMethod.pin) {

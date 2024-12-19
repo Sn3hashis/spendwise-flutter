@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 class BiometricService {
   static final LocalAuthentication _auth = LocalAuthentication();
+  static const int maxAttempts = 3;
 
   static Future<bool> isAvailable() async {
     try {
@@ -11,23 +12,23 @@ class BiometricService {
       final isDeviceSupported = await _auth.isDeviceSupported();
       return isAvailable && isDeviceSupported;
     } catch (e) {
-      debugPrint('Error checking biometric availability: $e');
       return false;
     }
   }
 
-  static Future<bool> authenticate() async {
+  static Future<(bool, String?)> authenticate() async {
     try {
-      return await _auth.authenticate(
+      final authenticated = await _auth.authenticate(
         localizedReason: 'Please authenticate to access the app',
         options: const AuthenticationOptions(
           stickyAuth: true,
           biometricOnly: true,
         ),
       );
+      return (authenticated, null);
     } on PlatformException catch (e) {
       debugPrint('Error authenticating: $e');
-      return false;
+      return (false, e.message);
     }
   }
 } 
