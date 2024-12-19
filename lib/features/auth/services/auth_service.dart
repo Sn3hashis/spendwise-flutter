@@ -15,6 +15,7 @@ import '../providers/security_preferences_provider.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: [
       'email',
@@ -30,13 +31,13 @@ class AuthService {
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
   // Email/Password Sign Up with OTP
-  Future<void> signUpWithEmailAndPassword({
+  Future<UserCredential> signUpWithEmailAndPassword({
     required String email,
     required String password,
     required String name,
   }) async {
     try {
-      // Create user with email and password
+      // Create user with email and password first
       final userCredential = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
@@ -45,15 +46,19 @@ class AuthService {
       // Update user's display name
       await userCredential.user?.updateDisplayName(name);
 
-      // Generate and save OTP
+      // Generate OTP
       final otp = OTPService.generateOTP();
-      await OTPService.saveOTP(email, otp);
+      
+      // Save OTP and send email in parallel
+      await Future.wait([
+        OTPService.saveOTP(email, otp),
+        EmailService.sendOTPEmail(email, otp),
+      ]).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () => [null, null], // Return empty list on timeout
+      );
 
-      // Send OTP email
-      await EmailService.sendOTPEmail(email, otp);
-
-      // Sign out until verified
-      await _auth.signOut();
+      return userCredential;
     } on FirebaseAuthException catch (e) {
       throw _handleFirebaseAuthError(e);
     }
@@ -103,76 +108,48 @@ class AuthService {
   }
 
   // Google Sign In
-  Future<UserCredential> signInWithGoogle() async {
+  Future<UserCredential> signInWithGoogle({required GoogleSignInAccount? googleAccount}) async {
     try {
-      // Start sign in flow
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      if (googleUser == null) {
-        throw 'Google sign in was cancelled';
+      if (googleAccount == null) {
+        throw 'Google Sign In was cancelled';
       }
 
-      // Get auth details
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-
+      // Get auth details - this is done in parallel
+      final googleAuth = await googleAccount.authentication;
+      
       // Create credential
       final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
-      // Sign in with Firebase
+      // Sign in to Firebase
       final userCredential = await _auth.signInWithCredential(credential);
-      if (userCredential.user == null) {
-        throw 'Failed to sign in with Google';
-      }
-
-      // Create or update user document in Firestore
-      await _createOrUpdateUserDocument(userCredential.user!);
-
+      
+      // Create/update user document in parallel with navigation
+      _createOrUpdateUserDocument(userCredential.user!);
+      
       return userCredential;
     } catch (e) {
-      debugPrint('Error in Google Sign In: $e');
+      debugPrint('Error in signInWithGoogle: $e');
       rethrow;
     }
   }
 
   Future<void> _createOrUpdateUserDocument(User user) async {
     try {
-      final userDoc = FirebaseFirestore.instance.collection('users').doc(user.uid);
+      final userDoc = _firestore.collection('users').doc(user.uid);
       
-      // Get existing document
-      final doc = await userDoc.get();
-      
-      if (!doc.exists) {
-        // Create new user document with initial PIN state
-        await userDoc.set({
-          'email': user.email,
-          'displayName': user.displayName,
-          'photoURL': user.photoURL,
-          'createdAt': FieldValue.serverTimestamp(),
-          'lastLogin': FieldValue.serverTimestamp(),
-          'hasPin': false,
-          'pin': null,
-        });
-      } else {
-        // Update existing document but preserve PIN and hasPin
-        final updates = {
-          'lastLogin': FieldValue.serverTimestamp(),
-          'email': user.email,
-          'displayName': user.displayName,
-          'photoURL': user.photoURL,
-        };
-
-        // If PIN exists but hasPin is not set, set it
-        final data = doc.data();
-        if (data != null && data.containsKey('pin') && data['pin'] != null && !(data['hasPin'] as bool? ?? false)) {
-          updates['hasPin'] = true;
-        }
-
-        await userDoc.update(updates);
-      }
+      // Use set with merge to avoid unnecessary writes
+      await userDoc.set({
+        'email': user.email,
+        'displayName': user.displayName,
+        'photoURL': user.photoURL,
+        'lastSignIn': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
     } catch (e) {
-      debugPrint('Error creating/updating user document: $e');
+      debugPrint('Error updating user document: $e');
+      // Don't rethrow - this is not critical for login
     }
   }
 

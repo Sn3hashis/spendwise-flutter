@@ -20,6 +20,8 @@ import '../providers/security_preferences_provider.dart';
 import '../services/biometric_service.dart';
 import '../../../features/main/screens/main_layout_screen.dart';
 import '../../../features/auth/screens/biometric_auth_screen.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import '../../../core/theme/app_theme.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -95,14 +97,267 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     });
 
     try {
-      final userCredential = await _authService.signInWithGoogle();
+      // Try silent sign in first - this is much faster if user is already signed in
+      final silentSignIn = await GoogleSignIn().signInSilently();
+      if (!mounted) return;
+
+      if (silentSignIn != null) {
+        // User was previously signed in - directly authenticate with Firebase
+        final userCredential = await _authService.signInWithGoogle(
+          googleAccount: silentSignIn,
+        );
+        if (!mounted) return;
+        
+        if (userCredential.user != null) {
+          await HapticService.lightImpact(ref);
+          await _handleSuccessfulLogin();
+          return;
+        }
+      }
+
+      // If silent sign in failed, show account picker
+      final googleSignIn = GoogleSignIn();
+      final googleAccount = await googleSignIn.signIn();
+      if (!mounted) return;
+
+      if (googleAccount != null) {
+        final userCredential = await _authService.signInWithGoogle(
+          googleAccount: googleAccount,
+        );
+        
+        if (!mounted) return;
+        
+        if (userCredential.user != null) {
+          await HapticService.lightImpact(ref);
+          await _handleSuccessfulLogin();
+        } else {
+          ToastService.showToast(
+            context, 
+            'Failed to sign in with Google. Please try again.',
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Google Sign-In error: $e');
+      if (!mounted) return;
+      
+      String errorMessage = 'Failed to sign in with Google';
+      if (e is String) {
+        errorMessage = e;
+      } else if (e is FirebaseAuthException) {
+        errorMessage = e.message ?? errorMessage;
+      }
+      
+      ToastService.showToast(context, errorMessage);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _showAccountPicker() async {
+    final googleSignIn = GoogleSignIn();
+    
+    try {
+      // Get current signed in account
+      final currentAccount = await googleSignIn.signInSilently();
+      if (!mounted) return;
+
+      final isDarkMode = ref.watch(themeProvider);
+      
+      showCupertinoModalPopup(
+        context: context,
+        builder: (context) => Container(
+          color: isDarkMode ? AppTheme.backgroundDark : AppTheme.backgroundLight,
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(
+                        color: isDarkMode ? CupertinoColors.systemGrey4 : CupertinoColors.systemGrey5,
+                        width: 0.5,
+                      ),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Text(
+                        'Choose an account',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: isDarkMode ? CupertinoColors.white : CupertinoColors.black,
+                        ),
+                      ),
+                      const Spacer(),
+                      CupertinoButton(
+                        padding: EdgeInsets.zero,
+                        child: Text(
+                          'Cancel',
+                          style: TextStyle(
+                            fontSize: 17,
+                            color: isDarkMode ? CupertinoColors.activeBlue : CupertinoColors.systemBlue,
+                          ),
+                        ),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.of(context).size.height * 0.4,
+                  ),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (currentAccount != null) 
+                          _buildAccountTile(currentAccount),
+                        _buildAddAccountTile(),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Error showing account picker: $e');
+      // Fallback to regular sign in
+      await _signInWithGoogle();
+    }
+  }
+
+  Widget _buildAccountTile(GoogleSignInAccount account) {
+    final isDarkMode = ref.watch(themeProvider);
+    
+    return CupertinoButton(
+      padding: EdgeInsets.zero,
+      onPressed: () async {
+        Navigator.pop(context);
+        await _signInWithGoogle(existingAccount: account);
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: isDarkMode ? CupertinoColors.systemGrey4 : CupertinoColors.systemGrey5,
+              width: 0.5,
+            ),
+          ),
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 20,
+              backgroundColor: isDarkMode ? CupertinoColors.systemGrey : CupertinoColors.systemGrey2,
+              backgroundImage: account.photoUrl != null ? NetworkImage(account.photoUrl!) : null,
+              child: account.photoUrl == null
+                  ? Icon(
+                      CupertinoIcons.person_circle_fill,
+                      size: 40,
+                      color: isDarkMode ? CupertinoColors.white : CupertinoColors.black,
+                    )
+                  : null,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    account.displayName ?? '',
+                    style: TextStyle(
+                      fontSize: 17,
+                      color: isDarkMode ? CupertinoColors.white : CupertinoColors.black,
+                    ),
+                  ),
+                  Text(
+                    account.email,
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: isDarkMode ? CupertinoColors.systemGrey : CupertinoColors.systemGrey2,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAddAccountTile() {
+    final isDarkMode = ref.watch(themeProvider);
+    
+    return CupertinoButton(
+      padding: EdgeInsets.zero,
+      onPressed: () async {
+        Navigator.pop(context);
+        await _signInWithGoogle();
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isDarkMode ? CupertinoColors.systemGrey6 : CupertinoColors.systemGrey5,
+              ),
+              child: Icon(
+                CupertinoIcons.add,
+                color: isDarkMode ? CupertinoColors.activeBlue : CupertinoColors.systemBlue,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              'Add another account',
+              style: TextStyle(
+                fontSize: 17,
+                color: isDarkMode ? CupertinoColors.activeBlue : CupertinoColors.systemBlue,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _signInWithGoogle({GoogleSignInAccount? existingAccount}) async {
+    final googleSignIn = GoogleSignIn();
+    final googleAccount = existingAccount ?? await googleSignIn.signIn();
+    if (!mounted) return;
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final userCredential = await _authService.signInWithGoogle(
+        googleAccount: googleAccount,
+      );
       
       if (!mounted) return;
       
       if (userCredential.user != null) {
         await HapticService.lightImpact(ref);
-        
-        // Load PIN status after successful sign in
         await _handleSuccessfulLogin();
       } else {
         ToastService.showToast(

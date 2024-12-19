@@ -12,6 +12,7 @@ import '../../../core/widgets/haptic_feedback_wrapper.dart';
 import 'pin_entry_screen.dart';
 import '../services/auth_service.dart';
 import '../../../core/services/toast_service.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 class SignUpScreen extends ConsumerStatefulWidget {
   const SignUpScreen({super.key});
@@ -96,14 +97,19 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
     });
 
     try {
-      await _authService.signUpWithEmailAndPassword(
+      // Show immediate feedback
+      ToastService.showToast(context, 'Creating your account...');
+
+      final userCredential = await _authService.signUpWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text,
         name: _nameController.text.trim(),
       );
       
       if (!mounted) return;
-      Navigator.push(
+
+      // Navigate to OTP screen immediately after account creation
+      Navigator.pushReplacement(
         context,
         CupertinoPageRoute(
           builder: (context) => OtpVerificationScreen(
@@ -113,13 +119,21 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
           ),
         ),
       );
+
+      // Show success message
+      ToastService.showToast(
+        context, 
+        'Account created! Please check your email for verification code.',
+      );
     } catch (e) {
       if (!mounted) return;
       ToastService.showToast(context, e.toString());
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -129,16 +143,30 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
     });
 
     try {
-      await _authService.signInWithGoogle();
+      // Get Google account
+      final googleAccount = await GoogleSignIn().signIn();
+      if (googleAccount == null) {
+        throw 'Google sign in was cancelled';
+      }
+
+      // Sign in with Google
+      final userCredential = await _authService.signInWithGoogle(
+        googleAccount: googleAccount,
+      );
       
       if (!mounted) return;
-      Navigator.of(context).pushReplacement(
-        CupertinoPageRoute(
-          builder: (context) => const PinEntryScreen(
-            mode: PinEntryMode.setup,
+      
+      if (userCredential.user != null) {
+        Navigator.of(context).pushReplacement(
+          CupertinoPageRoute(
+            builder: (context) => const PinEntryScreen(
+              mode: PinEntryMode.setup,
+            ),
           ),
-        ),
-      );
+        );
+      } else {
+        ToastService.showToast(context, 'Failed to sign up with Google');
+      }
     } catch (e) {
       if (!mounted) return;
       ToastService.showToast(context, e.toString());

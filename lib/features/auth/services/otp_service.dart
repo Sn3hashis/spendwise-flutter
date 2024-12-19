@@ -7,7 +7,7 @@ class OTPService {
   
   // Generate a 6-digit OTP
   static String generateOTP() {
-    final random = Random();
+    final random = Random.secure();
     return List.generate(6, (_) => random.nextInt(10)).join();
   }
 
@@ -16,13 +16,16 @@ class OTPService {
     final prefs = await SharedPreferences.getInstance();
     final expiryTime = DateTime.now().add(const Duration(minutes: 5));
     
+    // Save values separately since we can't use Future.wait with nullable returns
     await prefs.setString('$_otpKey$email', otp);
     await prefs.setString('$_otpExpiryKey$email', expiryTime.toIso8601String());
   }
 
-  // Verify OTP
+  // Verify OTP with optimized checks
   static Future<bool> verifyOTP(String email, String otp) async {
     final prefs = await SharedPreferences.getInstance();
+    
+    // Get values separately since getString returns String?
     final savedOTP = prefs.getString('$_otpKey$email');
     final expiryTimeStr = prefs.getString('$_otpExpiryKey$email');
 
@@ -32,24 +35,24 @@ class OTPService {
 
     final expiryTime = DateTime.parse(expiryTimeStr);
     if (DateTime.now().isAfter(expiryTime)) {
-      // OTP expired, clean up
-      await _cleanupOTP(email);
+      // Clean up expired OTP in the background
+      _cleanupOTP(email);
       return false;
     }
 
-    if (savedOTP == otp) {
-      // Clean up after successful verification
-      await _cleanupOTP(email);
-      return true;
+    final isValid = savedOTP == otp;
+    if (isValid) {
+      // Clean up used OTP in the background
+      _cleanupOTP(email);
     }
-
-    return false;
+    return isValid;
   }
 
-  // Clean up OTP data
+  // Clean up OTP data in the background
   static Future<void> _cleanupOTP(String email) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('$_otpKey$email');
-    await prefs.remove('$_otpExpiryKey$email');
+    SharedPreferences.getInstance().then((prefs) {
+      prefs.remove('$_otpKey$email');
+      prefs.remove('$_otpExpiryKey$email');
+    });
   }
 } 
