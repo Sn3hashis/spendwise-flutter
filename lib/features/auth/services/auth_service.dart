@@ -13,6 +13,8 @@ import '../providers/pin_provider.dart';
 import '../providers/user_provider.dart';
 import '../providers/security_preferences_provider.dart';
 import '../../transactions/providers/transactions_provider.dart';
+import '../../budget/providers/budget_provider.dart';
+import '../../categories/providers/category_provider.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -107,8 +109,15 @@ class AuthService {
         password: password,
       );
       
-      // Restore transactions after successful sign in
-      await ref.read(transactionsProvider.notifier).restoreTransactionsFromFirebase();
+      // Create/update user document first
+      await _createOrUpdateUserDocument(userCredential.user!);
+      
+      // Then restore all data in parallel
+      await Future.wait<void>([
+        ref.read(categoryProvider.notifier).restoreUserCategoriesFromFirebase(),
+        ref.read(budgetProvider.notifier).restoreBudgetsFromFirebase(),
+        ref.read(transactionsProvider.notifier).restoreTransactionsFromFirebase(),
+      ]);
       
       return userCredential;
     } on FirebaseAuthException catch (e) {

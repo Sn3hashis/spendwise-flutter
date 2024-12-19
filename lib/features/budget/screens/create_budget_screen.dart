@@ -152,12 +152,14 @@ class _CreateBudgetScreenState extends ConsumerState<CreateBudgetScreen> {
 
   DateTime _getEndDate(DateTime startDate, RecurringType type) {
     switch (type) {
+      case RecurringType.daily:
+        return startDate.add(const Duration(days: 1));
+      case RecurringType.weekly:
+        return startDate.add(const Duration(days: 7));
       case RecurringType.monthly:
-        return DateTime(startDate.year, startDate.month + 1, 0);
-      case RecurringType.quarterly:
-        return DateTime(startDate.year, startDate.month + 3, 0);
+        return DateTime(startDate.year, startDate.month + 1, startDate.day);
       case RecurringType.yearly:
-        return DateTime(startDate.year + 1, startDate.month, 0);
+        return DateTime(startDate.year + 1, startDate.month, startDate.day);
     }
   }
 
@@ -165,6 +167,19 @@ class _CreateBudgetScreenState extends ConsumerState<CreateBudgetScreen> {
     if (progress >= 0.8) return CupertinoColors.systemRed;
     if (progress >= 0.6) return CupertinoColors.systemOrange;
     return CupertinoColors.systemPurple;
+  }
+
+  String _getRecurringText(RecurringType type) {
+    switch (type) {
+      case RecurringType.daily:
+        return 'Daily';
+      case RecurringType.weekly:
+        return 'Weekly';
+      case RecurringType.monthly:
+        return 'Monthly';
+      case RecurringType.yearly:
+        return 'Yearly';
+    }
   }
 
   @override

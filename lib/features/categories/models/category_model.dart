@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
 enum CategoryType {
   income,
@@ -25,6 +26,37 @@ class Category {
     this.isCustom = false,
   });
 
+  factory Category.fromJson(Map<String, dynamic> json) {
+    return Category(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      description: json['description'] as String,
+      icon: IconData(
+        json['icon'] as int,
+        fontFamily: json['iconFontFamily'] as String?,
+        fontPackage: json['iconFontPackage'] as String?,
+      ),
+      color: Color(json['color'] as int),
+      type: CategoryType.values.firstWhere(
+        (type) => type.toString() == json['type'],
+        orElse: () => CategoryType.expense,
+      ),
+      isCustom: json['isCustom'] as bool? ?? false,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'description': description,
+    'icon': icon.codePoint,
+    'iconFontFamily': icon.fontFamily,
+    'iconFontPackage': icon.fontPackage,
+    'color': color.value,
+    'type': type.toString(),
+    'isCustom': isCustom,
+  };
+
   Category copyWith({
     String? id,
     String? name,
@@ -44,26 +76,4 @@ class Category {
       isCustom: isCustom ?? this.isCustom,
     );
   }
-
-  Map<String, dynamic> toJson() => {
-    'id': id,
-    'name': name,
-    'description': description,
-    'icon': icon.codePoint,
-    'color': color.value,
-    'type': type.toString(),
-    'isCustom': isCustom,
-  };
-
-  factory Category.fromJson(Map<String, dynamic> json) => Category(
-    id: json['id'] as String,
-    name: json['name'] as String,
-    description: json['description'] as String,
-    icon: IconData(json['icon'] as int, fontFamily: 'CupertinoIcons'),
-    color: Color(json['color'] as int),
-    type: CategoryType.values.firstWhere(
-      (e) => e.toString() == json['type'],
-    ),
-    isCustom: json['isCustom'] as bool? ?? false,
-  );
 } 

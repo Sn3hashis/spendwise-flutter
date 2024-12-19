@@ -1,5 +1,13 @@
 import 'package:flutter/material.dart';
 import '../../categories/models/category_model.dart';
+import 'dart:convert';
+
+enum RecurringType {
+  daily,
+  weekly,
+  monthly,
+  yearly,
+}
 
 class Budget {
   final String id;
@@ -31,6 +39,15 @@ class Budget {
   double get progress => spent / amount;
   bool get shouldNotify => progress >= alertThreshold && !hasNotified;
 
+  bool isActive() {
+    final now = DateTime.now();
+    return now.isAfter(startDate) && now.isBefore(endDate);
+  }
+
+  bool isDateInPeriod(DateTime date) {
+    return date.isAfter(startDate) && date.isBefore(endDate);
+  }
+
   Budget copyWith({
     String? id,
     String? name,
@@ -59,18 +76,49 @@ class Budget {
     );
   }
 
-  bool isDateInPeriod(DateTime date) {
-    return date.isAfter(startDate) && date.isBefore(endDate.add(const Duration(days: 1)));
+  // Add fromJson constructor
+  factory Budget.fromJson(Map<String, dynamic> json) {
+    return Budget(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      amount: (json['amount'] as num).toDouble(),
+      spent: (json['spent'] as num?)?.toDouble() ?? 0.0,
+      category: Category.fromJson(json['category'] as Map<String, dynamic>),
+      startDate: DateTime.parse(json['startDate'] as String),
+      endDate: DateTime.parse(json['endDate'] as String),
+      alertThreshold: (json['alertThreshold'] as num?)?.toDouble() ?? 0.8,
+      isRecurring: json['isRecurring'] as bool? ?? false,
+      recurringType: RecurringType.values.firstWhere(
+        (type) => type.toString() == json['recurringType'],
+        orElse: () => RecurringType.monthly,
+      ),
+      hasNotified: json['hasNotified'] as bool? ?? false,
+    );
   }
 
-  bool isActive() {
-    final now = DateTime.now();
-    return isDateInPeriod(now);
+  // Add toJson method
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'amount': amount,
+      'spent': spent,
+      'category': category.toJson(),
+      'startDate': startDate.toIso8601String(),
+      'endDate': endDate.toIso8601String(),
+      'alertThreshold': alertThreshold,
+      'isRecurring': isRecurring,
+      'recurringType': recurringType.toString(),
+      'hasNotified': hasNotified,
+    };
   }
-}
 
-enum RecurringType {
-  monthly,
-  quarterly,
-  yearly,
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is Budget && other.id == id;
+  }
+
+  @override
+  int get hashCode => id.hashCode;
 } 
