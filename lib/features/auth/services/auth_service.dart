@@ -12,6 +12,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../providers/pin_provider.dart';
 import '../providers/user_provider.dart';
 import '../providers/security_preferences_provider.dart';
+import '../../transactions/providers/transactions_provider.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -23,6 +24,9 @@ class AuthService {
     ],
     signInOption: SignInOption.standard,
   );
+  final Ref ref;
+
+  AuthService(this.ref);
 
   // Get current user
   User? get currentUser => _auth.currentUser;
@@ -98,10 +102,15 @@ class AuthService {
     required String password,
   }) async {
     try {
-      return await _auth.signInWithEmailAndPassword(
+      final userCredential = await _auth.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
+      
+      // Restore transactions after successful sign in
+      await ref.read(transactionsProvider.notifier).restoreTransactionsFromFirebase();
+      
+      return userCredential;
     } on FirebaseAuthException catch (e) {
       throw _handleFirebaseAuthError(e);
     }
@@ -223,4 +232,8 @@ class AuthService {
         return e.message ?? 'An error occurred during authentication';
     }
   }
-} 
+}
+
+final authServiceProvider = Provider<AuthService>((ref) {
+  return AuthService(ref);
+}); 

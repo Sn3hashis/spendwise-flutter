@@ -16,7 +16,6 @@ class ForgotPasswordScreen extends ConsumerStatefulWidget {
 
 class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   final TextEditingController _emailController = TextEditingController();
-  final AuthService _authService = AuthService();
   bool _isLoading = false;
   String? _errorMessage;
 
@@ -48,7 +47,8 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     });
 
     try {
-      await _authService.sendPasswordResetEmail(_emailController.text.trim());
+      final authService = ref.read(authServiceProvider);
+      await authService.sendPasswordResetEmail(_emailController.text.trim());
       
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
@@ -72,6 +72,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = ref.watch(themeProvider);
+    final authService = ref.watch(authServiceProvider);
 
     return WillPopScope(
       onWillPop: _onWillPop,

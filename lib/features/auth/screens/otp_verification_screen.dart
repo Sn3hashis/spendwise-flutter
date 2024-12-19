@@ -23,7 +23,6 @@ class OtpVerificationScreen extends ConsumerStatefulWidget {
 }
 
 class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
-  final AuthService _authService = AuthService();
   String currentOtp = '';
   int timeLeft = 299; // 5 minutes in seconds
   Timer? timer;
@@ -93,7 +92,8 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
     });
 
     try {
-      await _authService.verifyOTP(
+      final authService = ref.read(authServiceProvider);
+      await authService.verifyOTP(
         email: widget.email,
         otp: currentOtp,
         password: widget.password,

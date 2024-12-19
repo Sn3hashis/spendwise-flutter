@@ -33,7 +33,6 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
   String? _passwordError;
   bool _isLoading = false;
   String? _errorMessage;
-  final AuthService _authService = AuthService();
 
   void _validateField(String? value, String fieldName) {
     setState(() {
@@ -97,10 +96,11 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
     });
 
     try {
+      final authService = ref.read(authServiceProvider);
       // Show immediate feedback
       ToastService.showToast(context, 'Creating your account...');
 
-      final userCredential = await _authService.signUpWithEmailAndPassword(
+      final userCredential = await authService.signUpWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text,
         name: _nameController.text.trim(),
@@ -150,7 +150,8 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
       }
 
       // Sign in with Google
-      final userCredential = await _authService.signInWithGoogle(
+      final authService = ref.read(authServiceProvider);
+      final userCredential = await authService.signInWithGoogle(
         googleAccount: googleAccount,
       );
       

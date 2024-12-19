@@ -34,7 +34,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _isPasswordVisible = false;
-  final AuthService _authService = AuthService();
   bool _isLoading = false;
   String? _errorMessage;
 
@@ -57,7 +56,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     });
 
     try {
-      await _authService.signInWithEmailAndPassword(
+      final authService = ref.read(authServiceProvider);
+      await authService.signInWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
@@ -97,13 +97,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     });
 
     try {
+      final authService = ref.read(authServiceProvider);
       // Try silent sign in first - this is much faster if user is already signed in
       final silentSignIn = await GoogleSignIn().signInSilently();
       if (!mounted) return;
 
       if (silentSignIn != null) {
         // User was previously signed in - directly authenticate with Firebase
-        final userCredential = await _authService.signInWithGoogle(
+        final userCredential = await authService.signInWithGoogle(
           googleAccount: silentSignIn,
         );
         if (!mounted) return;
@@ -121,7 +122,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (!mounted) return;
 
       if (googleAccount != null) {
-        final userCredential = await _authService.signInWithGoogle(
+        final userCredential = await authService.signInWithGoogle(
           googleAccount: googleAccount,
         );
         
@@ -350,7 +351,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     });
 
     try {
-      final userCredential = await _authService.signInWithGoogle(
+      final authService = ref.read(authServiceProvider);
+      final userCredential = await authService.signInWithGoogle(
         googleAccount: googleAccount,
       );
       
@@ -458,6 +460,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = ref.watch(themeProvider);
+    final authService = ref.watch(authServiceProvider);
 
     return PopScope(
       canPop: false,
