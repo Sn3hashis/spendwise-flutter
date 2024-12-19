@@ -11,37 +11,6 @@ final pinProvider = StateNotifierProvider<PinNotifier, String?>((ref) {
 class PinNotifier extends StateNotifier<String?> {
   PinNotifier() : super(null);
   
-  Future<void> setPin(String pin) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      debugPrint('Cannot set PIN: No user logged in');
-      return;
-    }
-
-    try {
-      debugPrint('Setting PIN for user: ${user.uid}');
-      
-      // Save to Firebase
-      final userDoc = FirebaseFirestore.instance.collection('users').doc(user.uid);
-      await userDoc.set({
-        'pin': pin,
-        'hasPin': true,
-        'pinCreatedAt': FieldValue.serverTimestamp(),
-        'lastUpdated': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
-
-      // Save to local storage
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('user_pin_${user.uid}', pin);
-      
-      state = pin;
-      debugPrint('PIN set successfully: $pin');
-    } catch (e) {
-      debugPrint('Error setting PIN: $e');
-      rethrow;
-    }
-  }
-
   Future<void> loadPin() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
@@ -53,7 +22,17 @@ class PinNotifier extends StateNotifier<String?> {
     try {
       debugPrint('Loading PIN for user: ${user.uid}');
       
-      // Try Firebase first
+      // Try local storage first
+      final prefs = await SharedPreferences.getInstance();
+      final localPin = prefs.getString('user_pin_${user.uid}');
+      
+      if (localPin != null) {
+        debugPrint('PIN found in local storage');
+        state = localPin;
+        return;
+      }
+
+      // If not in local storage, try Firebase
       final doc = await FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
@@ -67,32 +46,16 @@ class PinNotifier extends StateNotifier<String?> {
 
       final data = doc.data()!;
       debugPrint('Firebase data: $data');
-
-      // Check if PIN exists in Firebase
+      
       if (data.containsKey('pin') && data['pin'] != null) {
         final pin = data['pin'] as String;
         debugPrint('PIN found in Firebase: $pin');
         
-        // Update local storage
-        final prefs = await SharedPreferences.getInstance();
+        // Save to local storage
         await prefs.setString('user_pin_${user.uid}', pin);
         
         state = pin;
         return;
-      }
-
-      // If no PIN in Firebase but hasPin is true, something went wrong
-      if (data['hasPin'] == true) {
-        // Try local storage as fallback
-        final prefs = await SharedPreferences.getInstance();
-        final localPin = prefs.getString('user_pin_${user.uid}');
-        
-        if (localPin != null) {
-          debugPrint('PIN found in local storage: $localPin');
-          // Sync back to Firebase
-          await setPin(localPin);
-          return;
-        }
       }
 
       debugPrint('No PIN found for user ${user.uid}');
@@ -103,28 +66,45 @@ class PinNotifier extends StateNotifier<String?> {
     }
   }
 
-  Future<void> clearPin() async {
+  Future<void> setPin(String pin) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
     try {
-      // Clear from Firebase
+      // Save to Firebase
       await FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
-          .update({
-            'pin': FieldValue.delete(),
-            'hasPin': false,
-          });
+          .set({
+        'pin': pin,
+        'hasPin': true,
+        'pinCreatedAt': FieldValue.serverTimestamp(),
+        'lastUpdated': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      // Save to local storage
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('user_pin_${user.uid}', pin);
       
-      // Clear from local storage
+      state = pin;
+    } catch (e) {
+      debugPrint('Error setting PIN: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> clearLocalPin() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      // Only clear from local storage
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('user_pin_${user.uid}');
       
       state = null;
-      debugPrint('PIN cleared successfully');
     } catch (e) {
-      debugPrint('Error clearing PIN: $e');
+      debugPrint('Error clearing local PIN: $e');
       rethrow;
     }
   }

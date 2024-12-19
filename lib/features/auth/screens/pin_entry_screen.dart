@@ -9,17 +9,20 @@ import '../../../core/widgets/haptic_feedback_wrapper.dart';
 import '../../../core/services/haptic_service.dart';
 import '../providers/pin_provider.dart';
 import '../../../core/services/toast_service.dart';
+import '../../../core/theme/app_theme.dart';
 
 enum PinEntryMode { setup, verify }
 
 class PinEntryScreen extends ConsumerStatefulWidget {
   final PinEntryMode mode;
   final String? setupConfirmPin;
+  final String? message;
 
   const PinEntryScreen({
     super.key,
     required this.mode,
     this.setupConfirmPin,
+    this.message,
   });
 
   @override
@@ -30,6 +33,8 @@ class _PinEntryScreenState extends ConsumerState<PinEntryScreen> {
   final int pinLength = 4;
   String currentPin = '';
   bool _isLoading = false;
+  String _errorMessage = '';
+  String _enteredPin = '';
 
   @override
   void initState() {
@@ -126,6 +131,7 @@ class _PinEntryScreenState extends ConsumerState<PinEntryScreen> {
           );
         } else {
           if (!mounted) return;
+          await HapticService.errorVibrate(ref);
           ToastService.showToast(
             context,
             'PINs do not match. Please try again.',
@@ -139,6 +145,14 @@ class _PinEntryScreenState extends ConsumerState<PinEntryScreen> {
         final storedPin = ref.read(pinProvider);
         if (currentPin == storedPin) {
           if (!mounted) return;
+          
+          // If we're verifying for security method change, pop with success
+          if (widget.message?.contains('confirm') ?? false) {
+            Navigator.of(context).pop(true);
+            return;
+          }
+          
+          // Normal verification flow
           Navigator.pushReplacement(
             context,
             CupertinoPageRoute(
@@ -147,6 +161,7 @@ class _PinEntryScreenState extends ConsumerState<PinEntryScreen> {
           );
         } else {
           if (!mounted) return;
+          await HapticService.errorVibrate(ref);
           ToastService.showToast(
             context,
             'Incorrect PIN. Please try again.',
@@ -171,6 +186,32 @@ class _PinEntryScreenState extends ConsumerState<PinEntryScreen> {
     }
   }
 
+  Future<void> _verifyPin(String enteredPin) async {
+    final storedPin = ref.read(pinProvider);
+    if (storedPin == enteredPin) {
+      if (!mounted) return;
+      
+      // If we're verifying for security method change, pop with success
+      if (widget.message?.contains('confirm') ?? false) {
+        Navigator.of(context).pop(true);
+        return;
+      }
+      
+      // Normal verification flow
+      Navigator.of(context).pushReplacement(
+        CupertinoPageRoute(
+          builder: (context) => const MainLayoutScreen(),
+        ),
+      );
+    } else {
+      setState(() {
+        _errorMessage = 'Incorrect PIN';
+        _enteredPin = '';
+      });
+      await HapticService.errorVibrate(ref);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDarkMode = ref.watch(themeProvider);
@@ -179,199 +220,167 @@ class _PinEntryScreenState extends ConsumerState<PinEntryScreen> {
 
     return SystemUIWrapper(
       child: CupertinoPageScaffold(
-        backgroundColor:
-            isDarkMode ? CupertinoColors.black : CupertinoColors.white,
-        child: Column(
-          children: [
-            SafeArea(
-              bottom: false,
-              child: Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8.0, vertical: 12),
-                    child: Row(
-                      children: [
-                        CupertinoButton(
-                          padding: EdgeInsets.zero,
-                          onPressed: () async {
-                            await HapticService.lightImpact(ref);
-                            Navigator.of(context).pushReplacement(
-                              CupertinoPageRoute(
-                                builder: (context) => const LoginScreen(),
-                              ),
-                            );
-                          },
-                          child: Icon(
-                            CupertinoIcons.back,
-                            color: isDarkMode
-                                ? CupertinoColors.white
-                                : CupertinoColors.black,
-                          ),
-                        ),
-                        Expanded(
-                          child: Text(
-                            'PIN VERIFICATION',
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.w600,
-                              color: isDarkMode
-                                  ? CupertinoColors.white
-                                  : CupertinoColors.black,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                        const SizedBox(width: 40),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    height: 1,
-                    color: (isDarkMode
-                            ? CupertinoColors.systemGrey
-                            : CupertinoColors.systemGrey4)
-                        .withOpacity(0.3),
-                  ),
-                ],
-              ),
+        backgroundColor: isDarkMode ? AppTheme.backgroundDark : AppTheme.backgroundLight,
+        navigationBar: CupertinoNavigationBar(
+          backgroundColor: isDarkMode ? AppTheme.backgroundDark : AppTheme.backgroundLight,
+          middle: Text(
+            widget.mode == PinEntryMode.setup
+                ? widget.setupConfirmPin == null
+                    ? 'Setup PIN'
+                    : 'Confirm PIN'
+                : widget.message ?? 'Enter your PIN',
+            style: TextStyle(
+              color: isDarkMode ? CupertinoColors.white : CupertinoColors.black,
             ),
-            Expanded(
-              child: Column(
-                children: [
-                  const SizedBox(height: 20),
-                  // Lottie Animation
-                  Lottie.asset(
-                    'assets/animations/pin_verification_animation.json',
-                    height: size.height * 0.2,
-                    repeat: true,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    widget.mode == PinEntryMode.setup
-                        ? widget.setupConfirmPin == null
-                            ? 'Enter new PIN'
-                            : 'Confirm your PIN'
-                        : 'Enter your PIN',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: isDarkMode
-                          ? CupertinoColors.white
-                          : CupertinoColors.black,
+          ),
+          border: null,
+          automaticallyImplyLeading: false, // This removes the back button
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              if (_isLoading)
+                const Padding(
+                  padding: EdgeInsets.only(top: 8.0),
+                  child: CupertinoActivityIndicator(),
+                ),
+              Expanded(
+                child: Column(
+                  children: [
+                    const SizedBox(height: 20),
+                    // Remove the duplicate text since we now have it in the navigation bar
+                    Lottie.asset(
+                      'assets/animations/pin_verification_animation.json',
+                      height: size.height * 0.2,
+                      repeat: true,
                     ),
-                  ),
-                  const SizedBox(height: 24),
-                  // PIN dots
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(
-                      pinLength,
-                      (index) => Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 6),
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(20),
-                          color: isDarkMode
-                              ? CupertinoColors.systemGrey6.darkColor
-                              : CupertinoColors.systemGrey6,
-                        ),
-                        child: Center(
-                          child: index < currentPin.length
-                              ? Container(
-                                  width: 12,
-                                  height: 12,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: isDarkMode
-                                        ? CupertinoColors.white
-                                        : CupertinoColors.black,
-                                  ),
-                                )
-                              : null,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const Spacer(),
-                  // Reset PIN Button
-                  CupertinoButton(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    onPressed: () async {
-                      await HapticService.lightImpact(ref);
-                      setState(() {
-                        currentPin = '';
-                      });
-                    },
-                    child: Text(
-                      'Reset PIN',
+                    const SizedBox(height: 16),
+                    Text(
+                      widget.mode == PinEntryMode.setup
+                          ? widget.setupConfirmPin == null
+                              ? 'Enter new PIN'
+                              : 'Confirm your PIN'
+                          : 'Enter your PIN',
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
                         color: isDarkMode
                             ? CupertinoColors.white
                             : CupertinoColors.black,
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  // Keypad
-                  Container(
-                    width: double.infinity,
-                    padding: EdgeInsets.only(
-                      left: 16,
-                      right: 16,
-                      bottom: bottomPadding + 16,
-                    ),
-                    child: Column(
-                      children: [
-                        for (int i = 0; i < 4; i++)
-                          Container(
-                            height: 55,
-                            margin: EdgeInsets.only(
-                              bottom:
-                                  i == 3 ? 24 : 8, // More space after last row
-                            ),
-                            child: Row(
-                              children: i < 3
-                                  ? List.generate(
-                                      3,
-                                      (j) => Expanded(
-                                        child: _buildNumberButton(
-                                          (i * 3 + j + 1).toString(),
-                                        ),
-                                      ),
-                                    )
-                                  : [
-                                      Expanded(child: _buildBiometricButton()),
-                                      Expanded(child: _buildNumberButton('0')),
-                                      Expanded(child: _buildBackspaceButton()),
-                                    ],
-                            ),
+                    const SizedBox(height: 24),
+                    // PIN dots
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(
+                        pinLength,
+                        (index) => Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 6),
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(20),
+                            color: isDarkMode
+                                ? CupertinoColors.systemGrey6.darkColor
+                                : CupertinoColors.systemGrey6,
                           ),
-                      ],
-                    ),
-                  ),
-                  if (widget.mode == PinEntryMode.verify)
-                    Padding(
-                      padding: EdgeInsets.only(bottom: bottomPadding + 16),
-                      child: CupertinoButton(
-                        padding: const EdgeInsets.all(8),
-                        onPressed: () async {
-                          await HapticService.lightImpact(ref);
-                          // TODO: Implement forgot PIN logic
-                        },
-                        child: const Text(
-                          'Forgot PIN?',
-                          style: TextStyle(fontSize: 14),
+                          child: Center(
+                            child: index < currentPin.length
+                                ? Container(
+                                    width: 12,
+                                    height: 12,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: isDarkMode
+                                          ? CupertinoColors.white
+                                          : CupertinoColors.black,
+                                    ),
+                                  )
+                                : null,
+                          ),
                         ),
                       ),
                     ),
-                ],
+                    const Spacer(),
+                    // Reset PIN Button
+                    CupertinoButton(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      onPressed: () async {
+                        await HapticService.lightImpact(ref);
+                        setState(() {
+                          currentPin = '';
+                        });
+                      },
+                      child: Text(
+                        'Reset PIN',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: isDarkMode
+                              ? CupertinoColors.white
+                              : CupertinoColors.black,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    // Keypad
+                    Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.only(
+                        left: 16,
+                        right: 16,
+                        bottom: bottomPadding + 16,
+                      ),
+                      child: Column(
+                        children: [
+                          for (int i = 0; i < 4; i++)
+                            Container(
+                              height: 55,
+                              margin: EdgeInsets.only(
+                                bottom:
+                                    i == 3 ? 24 : 8, // More space after last row
+                              ),
+                              child: Row(
+                                children: i < 3
+                                    ? List.generate(
+                                        3,
+                                        (j) => Expanded(
+                                          child: _buildNumberButton(
+                                            (i * 3 + j + 1).toString(),
+                                          ),
+                                        ),
+                                      )
+                                    : [
+                                        Expanded(child: _buildBiometricButton()),
+                                        Expanded(child: _buildNumberButton('0')),
+                                        Expanded(child: _buildBackspaceButton()),
+                                      ],
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    if (widget.mode == PinEntryMode.verify)
+                      Padding(
+                        padding: EdgeInsets.only(bottom: bottomPadding + 16),
+                        child: CupertinoButton(
+                          padding: const EdgeInsets.all(8),
+                          onPressed: () async {
+                            await HapticService.lightImpact(ref);
+                            // TODO: Implement forgot PIN logic
+                          },
+                          child: const Text(
+                            'Forgot PIN?',
+                            style: TextStyle(fontSize: 14),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

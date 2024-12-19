@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../auth/providers/security_preferences_provider.dart';
 
 final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
   throw UnimplementedError();
@@ -74,9 +75,18 @@ class SettingsNotifier extends StateNotifier<Settings> {
     state = state.copyWith(haptics: haptics);
   }
 
-  Future<void> updateSecurity(String security) async {
-    await _prefs.setString('security', security);
-    state = state.copyWith(security: security);
+  Future<void> updateSecurity(String method) async {
+    state = state.copyWith(security: method);
+  }
+
+  String getCurrentSecurityMethod(WidgetRef ref) {
+    final securityMethod = ref.read(securityPreferencesProvider);
+    switch (securityMethod) {
+      case SecurityMethod.biometric:
+        return 'Biometric';
+      case SecurityMethod.pin:
+        return 'PIN';
+    }
   }
 
   Future<void> updateNotifications(String notifications) async {

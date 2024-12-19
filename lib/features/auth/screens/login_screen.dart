@@ -16,6 +16,10 @@ import '../services/auth_service.dart';
 import '../../../core/services/toast_service.dart';
 import '../providers/pin_provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../providers/security_preferences_provider.dart';
+import '../services/biometric_service.dart';
+import '../../../features/main/screens/main_layout_screen.dart';
+import '../../../features/auth/screens/biometric_auth_screen.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -150,27 +154,42 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         throw 'No user found after login';
       }
 
-      debugPrint('Loading PIN for user: ${user.uid}');
-      await ref.read(pinProvider.notifier).loadPin();
-      
+      // Load security preferences first
+      await ref.read(securityPreferencesProvider.notifier).loadPreferences();
+      final securityMethod = ref.read(securityPreferencesProvider);
+
+      // Only load PIN if it's the selected security method
+      if (securityMethod == SecurityMethod.pin) {
+        await ref.read(pinProvider.notifier).loadPin();
+      }
+
       if (!mounted) return;
 
-      final pin = ref.read(pinProvider);
-      debugPrint('PIN status after login: ${pin != null ? 'exists' : 'not found'}');
-
-      Navigator.of(context).pushReplacement(
-        CupertinoPageRoute(
-          builder: (context) => pin != null
-              ? const PinEntryScreen(mode: PinEntryMode.verify)
-              : const PinEntryScreen(mode: PinEntryMode.setup),
-        ),
-      );
+      switch (securityMethod) {
+        case SecurityMethod.biometric:
+          Navigator.of(context).pushReplacement(
+            CupertinoPageRoute(
+              builder: (context) => const BiometricAuthScreen(),
+            ),
+          );
+          break;
+        
+        case SecurityMethod.pin:
+          Navigator.of(context).pushReplacement(
+            CupertinoPageRoute(
+              builder: (context) => ref.read(pinProvider) != null
+                  ? const PinEntryScreen(mode: PinEntryMode.verify)
+                  : const PinEntryScreen(mode: PinEntryMode.setup),
+            ),
+          );
+          break;
+      }
     } catch (e) {
       debugPrint('Error in login flow: $e');
       if (!mounted) return;
       ToastService.showToast(
         context,
-        'Failed to load PIN settings. Please try again.',
+        e.toString(),
       );
     } finally {
       if (mounted) {

@@ -11,6 +11,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../providers/pin_provider.dart';
 import '../providers/user_provider.dart';
+import '../providers/security_preferences_provider.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -187,14 +188,17 @@ class AuthService {
   // Sign Out
   Future<void> signOut(WidgetRef ref) async {
     try {
-      // Only clear PIN from local storage
-      final prefs = await SharedPreferences.getInstance();
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
-        await prefs.remove('user_pin_${user.uid}');
+        // Clear PIN from local storage only
+        await ref.read(pinProvider.notifier).clearLocalPin();
+        
+        // Reset security preferences to PIN
+        await ref.read(securityPreferencesProvider.notifier).setSecurityMethod(SecurityMethod.pin);
       }
       
       // Clear onboarding status
+      final prefs = await SharedPreferences.getInstance();
       await prefs.remove('has_completed_onboarding');
       
       // Sign out from Google

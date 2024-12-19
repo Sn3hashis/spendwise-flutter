@@ -7,15 +7,18 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 
 import 'core/theme/app_theme.dart';
-import 'core/utils/system_ui_helper.dart';
 import 'core/providers/theme_provider.dart';
 import 'features/settings/providers/settings_provider.dart';
 import 'features/onboarding/screens/onboarding_screen.dart';
-import 'firebase_options.dart';
 import 'features/auth/screens/login_screen.dart';
 import 'features/auth/screens/pin_entry_screen.dart';
 import 'features/auth/providers/user_provider.dart';
 import 'features/auth/providers/pin_provider.dart';
+import 'features/auth/providers/security_preferences_provider.dart';
+import 'features/auth/screens/biometric_auth_screen.dart';
+import 'features/main/screens/main_layout_screen.dart';
+import 'firebase_options.dart';
+import 'core/utils/system_ui_helper.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -65,7 +68,17 @@ class _MyAppState extends ConsumerState<MyApp> with WidgetsBindingObserver {
   Future<void> _initializeApp() async {
     final user = ref.read(userProvider);
     if (user != null) {
+      // Load security preferences first
+      await ref.read(securityPreferencesProvider.notifier).loadPreferences();
+      final securityMethod = ref.read(securityPreferencesProvider);
+      
+      // Always load PIN on startup (it will check local storage first)
       await ref.read(pinProvider.notifier).loadPin();
+      
+      // If PIN exists but biometric is selected, don't show PIN screen
+      if (securityMethod == SecurityMethod.biometric) {
+        debugPrint('Biometric authentication selected');
+      }
     }
   }
 
@@ -73,18 +86,21 @@ class _MyAppState extends ConsumerState<MyApp> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     final isDarkMode = ref.watch(themeProvider);
     final user = ref.watch(userProvider);
-    final pin = ref.watch(pinProvider);
+    final securityMethod = ref.watch(securityPreferencesProvider);
     
-    Widget homeWidget;
+    late Widget homeWidget;
     
     if (!widget.hasCompletedOnboarding) {
       homeWidget = const OnboardingScreen();
     } else if (user == null) {
       homeWidget = const LoginScreen();
-    } else if (pin == null) {
-      homeWidget = const PinEntryScreen(mode: PinEntryMode.setup);
     } else {
-      homeWidget = const PinEntryScreen(mode: PinEntryMode.verify);
+      switch (securityMethod) {
+        case SecurityMethod.biometric:
+          homeWidget = const BiometricAuthScreen();
+        case SecurityMethod.pin:
+          homeWidget = const PinEntryScreen(mode: PinEntryMode.verify);
+      }
     }
 
     return AnnotatedRegion<SystemUiOverlayStyle>(

@@ -165,15 +165,13 @@ class SettingsScreen extends ConsumerWidget {
                               icon: CupertinoIcons.shield_fill,
                               iconColor: const Color(0xFFFF3B30),
                               title: 'Security',
-                              value: settings.security,
+                              value: ref.read(settingsProvider.notifier).getCurrentSecurityMethod(ref).toString(),
                               isDarkMode: isDarkMode,
                               onTap: () async {
                                 final result = await Navigator.push(
                                   context,
                                   CupertinoPageRoute(
-                                    builder: (context) => SecuritySelectorScreen(
-                                      selectedOption: settings.security,
-                                    ),
+                                    builder: (context) => const SecuritySelectorScreen(),
                                   ),
                                 );
                                 if (result != null) {
