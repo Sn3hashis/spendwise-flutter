@@ -5,6 +5,7 @@ import '../../../core/providers/theme_provider.dart';
 import '../../../core/widgets/system_ui_wrapper.dart';
 import '../../../core/widgets/exit_dialog.dart';
 import 'email_sent_screen.dart';
+import '../services/auth_service.dart';
 
 class ForgotPasswordScreen extends ConsumerStatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -15,6 +16,9 @@ class ForgotPasswordScreen extends ConsumerStatefulWidget {
 
 class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   final TextEditingController _emailController = TextEditingController();
+  final AuthService _authService = AuthService();
+  bool _isLoading = false;
+  String? _errorMessage;
 
   @override
   void dispose() {
@@ -28,6 +32,41 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     }
     final shouldPop = await ExitDialog.show(context);
     return shouldPop ?? false;
+  }
+
+  void _handleResetPassword() async {
+    if (_emailController.text.isEmpty) {
+      setState(() {
+        _errorMessage = 'Please enter your email';
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      await _authService.sendPasswordResetEmail(_emailController.text.trim());
+      
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(
+        CupertinoPageRoute(
+          builder: (context) => EmailSentScreen(
+            email: _emailController.text.trim(),
+          ),
+        ),
+      );
+    } catch (e) {
+      setState(() {
+        _errorMessage = e.toString();
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   @override
@@ -170,34 +209,34 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 24),
+                                if (_errorMessage != null) ...[
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    _errorMessage!,
+                                    style: const TextStyle(
+                                      color: CupertinoColors.destructiveRed,
+                                      fontSize: 14,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
                                 SizedBox(
                                   width: double.infinity,
                                   child: CupertinoButton.filled(
-                                    onPressed: () {
-                                      if (_emailController.text.isNotEmpty) {
-                                        Navigator.of(context).pushReplacement(
-                                          CupertinoPageRoute(
-                                            builder: (context) =>
-                                                EmailSentScreen(
-                                              email:
-                                                  _emailController.text.trim(),
+                                    onPressed: _isLoading ? null : _handleResetPassword,
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: _isLoading
+                                        ? const CupertinoActivityIndicator(color: CupertinoColors.white)
+                                        : const Padding(
+                                            padding: EdgeInsets.symmetric(vertical: 4),
+                                            child: Text(
+                                              'Continue',
+                                              style: TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w600,
+                                              ),
                                             ),
                                           ),
-                                        );
-                                      }
-                                    },
-                                    borderRadius: BorderRadius.circular(12),
-                                    child: const Padding(
-                                      padding:
-                                          EdgeInsets.symmetric(vertical: 4),
-                                      child: Text(
-                                        'Continue',
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
                                   ),
                                 ),
                                 const SizedBox(height: 24),

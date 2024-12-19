@@ -12,6 +12,7 @@ import '../../../core/providers/theme_provider.dart';
 import '../../../core/widgets/haptic_feedback_wrapper.dart';
 import '../../../core/services/haptic_service.dart';
 import 'package:flutter/services.dart';
+import '../services/auth_service.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -24,6 +25,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _isPasswordVisible = false;
+  final AuthService _authService = AuthService();
+  bool _isLoading = false;
+  String? _errorMessage;
 
   @override
   void dispose() {
@@ -33,12 +37,81 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   void _onLogin() async {
-    await HapticService.lightImpact(ref);
-    Navigator.of(context).pushReplacement(
-      CupertinoPageRoute(
-        builder: (context) => const PinEntryScreen(mode: PinEntryMode.setup),
-      ),
-    );
+    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+      setState(() {
+        _errorMessage = 'Please fill in all fields';
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      await _authService.signInWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+      
+      if (!mounted) return;
+      await HapticService.lightImpact(ref);
+      Navigator.of(context).pushReplacement(
+        CupertinoPageRoute(
+          builder: (context) => const PinEntryScreen(mode: PinEntryMode.setup),
+        ),
+      );
+    } catch (e) {
+      setState(() {
+        _errorMessage = e.toString();
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _handleGoogleSignIn() async {
+    if (_isLoading) return;
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final userCredential = await _authService.signInWithGoogle();
+      
+      if (!mounted) return;
+      
+      if (userCredential.user != null) {
+        await HapticService.lightImpact(ref);
+        Navigator.of(context).pushReplacement(
+          CupertinoPageRoute(
+            builder: (context) => const PinEntryScreen(mode: PinEntryMode.setup),
+          ),
+        );
+      } else {
+        setState(() {
+          _errorMessage = 'Failed to sign in with Google';
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = e.toString();
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   Future<bool> _onWillPop() async {
@@ -201,21 +274,29 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   ],
                                 ),
                                 const SizedBox(height: 24),
-                                HapticFeedbackWrapper(
-                                  onPressed: _onLogin,
-                                  child: CupertinoButton.filled(
-                                    onPressed: _onLogin,
-                                    borderRadius: BorderRadius.circular(12),
-                                    child: const Padding(
-                                      padding: EdgeInsets.symmetric(vertical: 4),
-                                      child: Text(
-                                        'LOGIN',
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w600,
-                                        ),
+                                if (_errorMessage != null) ...[
+                                  const SizedBox(height: 8),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                                    child: Text(
+                                      _errorMessage!,
+                                      style: const TextStyle(
+                                        color: CupertinoColors.destructiveRed,
+                                        fontSize: 14,
                                       ),
+                                      textAlign: TextAlign.center,
                                     ),
+                                  ),
+                                ],
+                                const SizedBox(height: 24),
+                                HapticFeedbackWrapper(
+                                  onPressed: _isLoading ? () {} : _onLogin,
+                                  child: CupertinoButton.filled(
+                                    onPressed: _isLoading ? () {} : _onLogin,
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: _isLoading
+                                        ? const CupertinoActivityIndicator(color: CupertinoColors.white)
+                                        : const Text('LOGIN'),
                                   ),
                                 ),
                                 const SizedBox(height: 24),
@@ -246,27 +327,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 ),
                                 const SizedBox(height: 24),
                                 HapticFeedbackWrapper(
-                                  onPressed: () async {
-                                    await HapticService.lightImpact(ref);
-                                    Navigator.of(context).pushReplacement(
-                                      CupertinoPageRoute(
-                                        builder: (context) =>
-                                            const PinEntryScreen(
-                                                mode: PinEntryMode.setup),
-                                      ),
-                                    );
-                                  },
+                                  onPressed: _isLoading ? () {} : _handleGoogleSignIn,
                                   child: CupertinoButton(
-                                    onPressed: () async {
-                                      await HapticService.lightImpact(ref);
-                                      Navigator.of(context).pushReplacement(
-                                        CupertinoPageRoute(
-                                          builder: (context) =>
-                                              const PinEntryScreen(
-                                                  mode: PinEntryMode.setup),
-                                        ),
-                                      );
-                                    },
+                                    onPressed: _isLoading ? () {} : _handleGoogleSignIn,
                                     color: isDarkMode
                                         ? CupertinoColors.black
                                         : CupertinoColors.white,

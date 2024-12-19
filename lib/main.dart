@@ -1,31 +1,48 @@
 import 'package:flutter/cupertino.dart';
-import 'package:spendwise/core/theme/app_theme.dart';
-import 'features/onboarding/screens/onboarding_screen.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'features/settings/providers/settings_provider.dart';
-import 'core/utils/system_ui_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'core/providers/theme_provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  
-  // Initialize SharedPreferences
-  final sharedPreferences = await SharedPreferences.getInstance();
-  
-  runApp(
-    ProviderScope(
-      overrides: [
-        // Override the sharedPreferencesProvider with the instance
-        sharedPreferencesProvider.overrideWithValue(sharedPreferences),
-      ],
-      child: const MyApp(),
-    ),
-  );
+import 'core/theme/app_theme.dart';
+import 'core/utils/system_ui_helper.dart';
+import 'core/providers/theme_provider.dart';
+import 'features/settings/providers/settings_provider.dart';
+import 'features/onboarding/screens/onboarding_screen.dart';
+import 'firebase_options.dart';
+
+Future<void> main() async {
+  try {
+    WidgetsFlutterBinding.ensureInitialized();
+    
+    // Initialize Firebase with better error handling
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    ).catchError((error) {
+      debugPrint('Firebase initialization error: $error');
+      throw error;
+    });
+    
+    // Initialize SharedPreferences
+    final sharedPreferences = await SharedPreferences.getInstance();
+    
+    runApp(
+      ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(sharedPreferences),
+        ],
+        child: const MyApp(),
+      ),
+    );
+  } catch (e) {
+    debugPrint('Error in main: $e');
+    rethrow;
+  }
 }
 
+@immutable
 class MyApp extends ConsumerStatefulWidget {
   const MyApp({super.key});
 
@@ -50,6 +67,7 @@ class _MyAppState extends ConsumerState<MyApp> with WidgetsBindingObserver {
 
   @override
   void didChangePlatformBrightness() {
+    if (!mounted) return;
     final brightness = WidgetsBinding.instance.platformDispatcher.platformBrightness;
     ref.read(platformBrightnessProvider.notifier).state = brightness;
   }
@@ -74,12 +92,12 @@ class _MyAppState extends ConsumerState<MyApp> with WidgetsBindingObserver {
         theme: isDarkMode ? AppTheme.getDarkTheme() : AppTheme.getLightTheme(),
         home: const OnboardingScreen(),
         builder: (context, child) {
-          // Get the current platform brightness
           final platformBrightness = MediaQuery.platformBrightnessOf(context);
           
-          // Update the platform brightness provider
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            ref.read(platformBrightnessProvider.notifier).state = platformBrightness;
+            if (mounted) {
+              ref.read(platformBrightnessProvider.notifier).state = platformBrightness;
+            }
           });
           
           return CupertinoTheme(
