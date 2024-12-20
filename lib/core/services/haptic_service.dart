@@ -49,4 +49,13 @@ class HapticService {
       await HapticFeedback.selectionClick();
     }
   }
+
+  static Future<void> errorVibrate(WidgetRef ref) async {
+    final haptics = ref.read(settingsProvider).haptics;
+    if (haptics == 'On') {
+      await HapticFeedback.vibrate();
+      await Future.delayed(const Duration(milliseconds: 100));
+      await HapticFeedback.vibrate();
+    }
+  }
 } 

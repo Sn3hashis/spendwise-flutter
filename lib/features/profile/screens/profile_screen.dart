@@ -3,17 +3,69 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/providers/theme_provider.dart';
 import '../../../core/services/haptic_service.dart';
+import '../../../core/widgets/haptic_feedback_wrapper.dart';
+import '../../../core/services/toast_service.dart';
+import '../../auth/screens/login_screen.dart';
+import '../../auth/providers/user_provider.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../categories/screens/categories_screen.dart';
 import '../../settings/screens/settings_screen.dart';
 import '../../payees/screens/manage_payees_screen.dart';
 import '../../analytics/screens/analytics_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
+  Future<void> _handleLogout(BuildContext context, WidgetRef ref) async {
+    final shouldLogout = await showCupertinoDialog<bool>(
+      context: context,
+      builder: (context) => CupertinoAlertDialog(
+        title: const Text('Logout'),
+        content: const Text('Are you sure you want to logout?'),
+        actions: [
+          CupertinoDialogAction(
+            isDestructiveAction: true,
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Logout'),
+          ),
+          CupertinoDialogAction(
+            isDefaultAction: true,
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldLogout != true || !context.mounted) return;
+
+    try {
+      await HapticService.lightImpact(ref);
+      await ref.read(authServiceProvider).signOut(ref);
+      
+      if (!context.mounted) return;
+      
+      // Navigate to login screen and clear all routes
+      Navigator.of(context).pushAndRemoveUntil(
+        CupertinoPageRoute(
+          builder: (context) => const LoginScreen(),
+        ),
+        (route) => false,
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ToastService.showToast(
+        context, 
+        'Failed to logout: ${e.toString()}',
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isDarkMode = ref.watch(themeProvider);
+    final user = ref.watch(userProvider);
 
     return CupertinoPageScaffold(
       backgroundColor: isDarkMode ? AppTheme.backgroundDark : AppTheme.backgroundLight,
@@ -34,28 +86,41 @@ class ProfileScreen extends ConsumerWidget {
               ),
               child: Row(
                 children: [
-                  Container(
-                    width: 64,
-                    height: 64,
-                    decoration: BoxDecoration(
-                      color: isDarkMode ? CupertinoColors.white : const Color(0xFFF2F2F7),
-                      shape: BoxShape.circle,
+                  if (user?.photoURL != null)
+                    Container(
+                      width: 64,
+                      height: 64,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        image: DecorationImage(
+                          image: NetworkImage(user!.photoURL!),
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    )
+                  else
+                    Container(
+                      width: 64,
+                      height: 64,
+                      decoration: BoxDecoration(
+                        color: isDarkMode ? CupertinoColors.white : const Color(0xFFF2F2F7),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        CupertinoIcons.person_fill,
+                        size: 32,
+                        color: isDarkMode 
+                            ? CupertinoColors.systemGrey 
+                            : const Color(0xFF8E8E93),
+                      ),
                     ),
-                    child: Icon(
-                      CupertinoIcons.person_fill,
-                      size: 32,
-                      color: isDarkMode 
-                          ? CupertinoColors.systemGrey 
-                          : const Color(0xFF8E8E93),
-                    ),
-                  ),
                   const SizedBox(width: 16),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Iriana Saliha',
+                          user?.displayName ?? 'User',
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.w600,
@@ -66,7 +131,7 @@ class ProfileScreen extends ConsumerWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'iriana.saliha@example.com',
+                          user?.email ?? 'No email',
                           style: TextStyle(
                             fontSize: 14,
                             color: isDarkMode 
@@ -168,17 +233,50 @@ class ProfileScreen extends ConsumerWidget {
                       );
                     },
                   ),
-                  _buildMenuItem(
-                    context: context,
-                    ref: ref,
-                    icon: CupertinoIcons.arrow_right_circle,
-                    iconColor: AppTheme.iconColors['logout']!,
-                    title: 'Logout',
-                    isDarkMode: isDarkMode,
-                    showDivider: false,
-                    onTap: () {},
-                  ),
+                  // _buildMenuItem(
+                  //   context: context,
+                  //   ref: ref,
+                  //   icon: CupertinoIcons.arrow_right_circle,
+                  //   iconColor: AppTheme.iconColors['logout']!,
+                  //   title: 'Logout',
+                  //   isDarkMode: isDarkMode,
+                  //   showDivider: false,
+                  //   onTap: () {},
+                  // ),
                 ],
+              ),
+            ),
+            
+            // Logout Button
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: HapticFeedbackWrapper(
+                onPressed: () => _handleLogout(context, ref),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: CupertinoColors.destructiveRed,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        CupertinoIcons.square_arrow_right,
+                        color: CupertinoColors.white,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        'Logout',
+                        style: TextStyle(
+                          color: CupertinoColors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
           ],

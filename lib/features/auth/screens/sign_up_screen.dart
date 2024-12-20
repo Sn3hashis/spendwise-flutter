@@ -8,7 +8,11 @@ import 'otp_verification_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/theme_provider.dart';
 import '../../../core/services/haptic_service.dart';
+import '../../../core/widgets/haptic_feedback_wrapper.dart';
 import 'pin_entry_screen.dart';
+import '../services/auth_service.dart';
+import '../../../core/services/toast_service.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 class SignUpScreen extends ConsumerStatefulWidget {
   const SignUpScreen({super.key});
@@ -27,6 +31,8 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
   String? _nameError;
   String? _emailError;
   String? _passwordError;
+  bool _isLoading = false;
+  String? _errorMessage;
 
   void _validateField(String? value, String fieldName) {
     setState(() {
@@ -72,13 +78,104 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
     return shouldPop ?? false;
   }
 
-  void _onSignUp() async {
-    await HapticService.lightImpact(ref);
-    Navigator.of(context).pushReplacement(
-      CupertinoPageRoute(
-        builder: (context) => const PinEntryScreen(mode: PinEntryMode.setup),
-      ),
-    );
+  Future<void> _handleSignUp() async {
+    if (_emailController.text.isEmpty || 
+        _passwordController.text.isEmpty ||
+        _nameController.text.isEmpty) {
+      ToastService.showToast(context, 'Please fill in all fields');
+      return;
+    }
+
+    if (!_agreedToTerms) {
+      ToastService.showToast(context, 'Please agree to the Terms of Service');
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final authService = ref.read(authServiceProvider);
+      // Show immediate feedback
+      ToastService.showToast(context, 'Creating your account...');
+
+      final userCredential = await authService.signUpWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+        name: _nameController.text.trim(),
+      );
+      
+      if (!mounted) return;
+
+      // Navigate to OTP screen immediately after account creation
+      Navigator.pushReplacement(
+        context,
+        CupertinoPageRoute(
+          builder: (context) => OtpVerificationScreen(
+            email: _emailController.text.trim(),
+            password: _passwordController.text,
+            name: _nameController.text.trim(),
+          ),
+        ),
+      );
+
+      // Show success message
+      ToastService.showToast(
+        context, 
+        'Account created! Please check your email for verification code.',
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ToastService.showToast(context, e.toString());
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _handleGoogleSignUp() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Get Google account
+      final googleAccount = await GoogleSignIn().signIn();
+      if (googleAccount == null) {
+        throw 'Google sign in was cancelled';
+      }
+
+      // Sign in with Google
+      final authService = ref.read(authServiceProvider);
+      final userCredential = await authService.signInWithGoogle(
+        googleAccount: googleAccount,
+      );
+      
+      if (!mounted) return;
+      
+      if (userCredential.user != null) {
+        Navigator.of(context).pushReplacement(
+          CupertinoPageRoute(
+            builder: (context) => const PinEntryScreen(
+              mode: PinEntryMode.setup,
+            ),
+          ),
+        );
+      } else {
+        ToastService.showToast(context, 'Failed to sign up with Google');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ToastService.showToast(context, e.toString());
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   @override
@@ -391,47 +488,21 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                                   ),
                                   const SizedBox(height: 24),
                                   CupertinoButton.filled(
-                                    onPressed: _agreedToTerms
-                                        ? () {
-                                            bool isValid = true;
-                                            _validateField(
-                                                _nameController.text, 'name');
-                                            _validateField(
-                                                _emailController.text, 'email');
-                                            _validateField(
-                                                _passwordController.text,
-                                                'password');
-
-                                            isValid = _nameError == null &&
-                                                _emailError == null &&
-                                                _passwordError == null;
-
-                                            if (isValid) {
-                                              Navigator.push(
-                                                context,
-                                                CupertinoPageRoute(
-                                                  builder: (context) =>
-                                                      OtpVerificationScreen(
-                                                    email: _emailController.text
-                                                        .trim(),
-                                                  ),
-                                                ),
-                                              );
-                                            }
-                                          }
-                                        : null,
+                                    onPressed: (_isLoading || !_agreedToTerms) ? null : _handleSignUp,
                                     borderRadius: BorderRadius.circular(12),
-                                    child: const Padding(
-                                      padding:
-                                          EdgeInsets.symmetric(vertical: 4),
-                                      child: Text(
-                                        'Sign Up',
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
+                                    child: _isLoading
+                                        ? const CupertinoActivityIndicator(color: CupertinoColors.white)
+                                        : const Padding(
+                                            padding: EdgeInsets.symmetric(vertical: 4),
+                                            child: Text(
+                                              'Sign Up',
+                                              style: TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w600,
+                                                color: CupertinoColors.white,
+                                              ),
+                                            ),
+                                          ),
                                   ),
                                   const SizedBox(height: 24),
                                   Row(
@@ -461,17 +532,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                                   ),
                                   const SizedBox(height: 24),
                                   CupertinoButton(
-                                    onPressed: () async {
-                                      await HapticService.lightImpact(ref);
-                                      Navigator.of(context).pushReplacement(
-                                        CupertinoPageRoute(
-                                          builder: (context) =>
-                                              const PinEntryScreen(
-                                            mode: PinEntryMode.setup,
-                                          ),
-                                        ),
-                                      );
-                                    },
+                                    onPressed: _isLoading ? null : _handleGoogleSignUp,
                                     color: isDarkMode
                                         ? CupertinoColors.black
                                         : CupertinoColors.white,

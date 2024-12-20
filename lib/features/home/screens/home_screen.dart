@@ -13,6 +13,7 @@ import '../../../features/settings/providers/settings_provider.dart';
 import '../../../core/providers/currency_provider.dart';
 import '../../../core/widgets/exit_dialog.dart';
 import 'package:flutter/services.dart';
+import '../../auth/providers/user_provider.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -189,6 +190,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = ref.watch(themeProvider);
+    final user = ref.watch(userProvider);
     final currentCurrency = ref.watch(currencyProvider).code;
     final size = MediaQuery.of(context).size;
     final transactions = ref.watch(transactionsProvider);
@@ -207,21 +209,40 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Column(
                       children: [
-                        // Header (Profile, Month selector, etc.)
+                        // Header with profile image
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: isDarkMode
-                                    ? CupertinoColors.systemGrey6.darkColor
-                                    : CupertinoColors.systemGrey6,
+                            if (user?.photoURL != null)
+                              Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  image: DecorationImage(
+                                    image: NetworkImage(user!.photoURL!),
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                              )
+                            else
+                              Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: isDarkMode
+                                      ? CupertinoColors.systemGrey6.darkColor
+                                      : CupertinoColors.systemGrey6,
+                                ),
+                                child: Icon(
+                                  CupertinoIcons.person_fill,
+                                  color: isDarkMode
+                                      ? CupertinoColors.systemGrey
+                                      : CupertinoColors.systemGrey2,
+                                  size: 24,
+                                ),
                               ),
-                              child: const Icon(CupertinoIcons.person),
-                            ),
                             HapticFeedbackWrapper(
                               onPressed: _showMonthPicker,
                               child: Container(

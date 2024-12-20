@@ -1,18 +1,32 @@
 {
   "project_info": {
     "project_number": "228590481963",
+    "firebase_url": "https://spendwise-6e665-default-rtdb.firebaseio.com",
     "project_id": "spendwise-6e665",
     "storage_bucket": "spendwise-6e665.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:228590481963:android:e5c992072d1f465189f06e",
+        "mobilesdk_app_id": "1:228590481963:android:60f4cda9814727c289f06e",
         "android_client_info": {
           "package_name": "me.sm.spendwise"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "228590481963-dmp4feqqon7s8nquqelfumiqfktio0gj.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "me.sm.spendwise",
+            "certificate_hash": "6278cf490e309218ffdf0906685bcf3774c4dab4"
+          }
+        },
+        {
+          "client_id": "228590481963-a5294cik6r7klikjlet69nkscsbejlgp.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCTaxGnDPxgoYaf9QVL6y45JHpRbIif4w4"
@@ -20,7 +34,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "228590481963-a5294cik6r7klikjlet69nkscsbejlgp.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "228590481963-r5eatlllpdcus2bc4qv4jdumf7ici3id.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.spendwise"
+              }
+            }
+          ]
         }
       }
     }

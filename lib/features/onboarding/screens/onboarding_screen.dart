@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:spendwise/features/onboarding/models/onboarding_item.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/widgets/system_ui_wrapper.dart';
 import '../../../core/widgets/haptic_feedback_wrapper.dart';
@@ -30,21 +31,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     });
   }
 
-  void _navigateToHome() {
+  Future<void> _completeOnboarding() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('has_completed_onboarding', true);
+    
+    if (!mounted) return;
     Navigator.of(context).pushReplacement(
-      PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) =>
-            const LoginScreen(),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          const begin = Offset(1.0, 0.0);
-          const end = Offset.zero;
-          const curve = Curves.easeInOut;
-          var tween =
-              Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-          var offsetAnimation = animation.drive(tween);
-          return SlideTransition(position: offsetAnimation, child: child);
-        },
-        transitionDuration: const Duration(milliseconds: 500),
+      CupertinoPageRoute(
+        builder: (context) => const LoginScreen(),
       ),
     );
   }
@@ -78,7 +72,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     const SizedBox(height: 16),
                     HapticFeedbackWrapper(
                       onPressed: () {
-                        _navigateToHome();
+                        _completeOnboarding();
                       },
                       child: Text(
                         'Skip',
@@ -152,7 +146,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             curve: Curves.easeInOut,
                           );
                         } else {
-                          _navigateToHome();
+                          _completeOnboarding();
                         }
                       },
                       child: Container(

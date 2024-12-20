@@ -353,9 +353,9 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
                         ),
                       ),
                       Text(
-                        budget.isRecurring 
-                            ? budget.recurringType.name.toUpperCase()
-                            : 'One-time budget',
+                        budget.isRecurring
+                            ? budget.recurringType?.toString().split('.').last.toUpperCase() ?? 'MONTHLY'
+                            : 'ONE TIME',
                         style: TextStyle(
                           fontSize: 13,
                           color: isDarkMode 
