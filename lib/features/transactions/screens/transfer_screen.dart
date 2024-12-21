@@ -1,5 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/material.dart';
+import 'dart:io';
 import '../../../core/providers/theme_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/haptic_service.dart';
@@ -82,17 +84,68 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
                     });
                     Navigator.pop(context);
                   },
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(payee.name),
-                      if ((isFromPayee && payee == _fromPayee) || 
-                          (!isFromPayee && payee == _toPayee))
-                        const Icon(
-                          CupertinoIcons.check_mark,
-                          color: CupertinoColors.activeBlue,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Row(
+                            children: [
+                              if (payee.imageUrl != null)
+                                CircleAvatar(
+                                  backgroundImage: payee.imageUrl!.startsWith('http')
+                                      ? NetworkImage(payee.imageUrl!)
+                                      : FileImage(File(payee.imageUrl!)) as ImageProvider,
+                                  radius: 16,
+                                )
+                              else
+                                CircleAvatar(
+                                  backgroundColor: CupertinoColors.systemGrey,
+                                  radius: 16,
+                                  child: Icon(
+                                    CupertinoIcons.person,
+                                    color: CupertinoColors.white,
+                                    size: 14,
+                                  ),
+                                ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      payee.name,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontSize: 15,
+                                      ),
+                                    ),
+                                    Text(
+                                      payee.phone ?? '',
+                                      style: const TextStyle(
+                                        fontSize: 15,
+                                        color: CupertinoColors.systemGrey,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                    ],
+                        if ((isFromPayee && payee == _fromPayee) || 
+                            (!isFromPayee && payee == _toPayee))
+                          const Padding(
+                            padding: EdgeInsets.only(left: 8.0),
+                            child: Icon(
+                              CupertinoIcons.check_mark,
+                              color: CupertinoColors.activeBlue,
+                              size: 20,
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -591,4 +644,4 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
       ),
     );
   }
-} 
+}
