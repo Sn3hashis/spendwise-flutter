@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
@@ -12,6 +13,7 @@ import '../providers/settings_provider.dart';
 import '../../../core/providers/theme_provider.dart';
 import '../../../core/widgets/system_ui_wrapper.dart';
 import '../../categories/screens/categories_screen.dart';
+import '../widgets/sync_tile.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -76,6 +78,8 @@ class SettingsScreen extends ConsumerWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: Column(
                           children: [
+                            const SyncTile(),
+                            const Divider(),
                             _buildSettingsItem(
                               context: context,
                               icon: CupertinoIcons.money_dollar_circle_fill,

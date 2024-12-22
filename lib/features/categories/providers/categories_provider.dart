@@ -414,6 +414,8 @@ class CategoriesNotifier extends StateNotifier<List<Category>> {
     }
   }
 
+  Future<void> syncWithFirebase() => _syncWithFirebase();
+
   // Helper methods to get categories by type
   List<Category> getCategoriesByType(CategoryType type) {
     return state.where((category) => category.type == type).toList();

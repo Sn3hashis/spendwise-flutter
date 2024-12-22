@@ -200,6 +200,8 @@ class TransactionsNotifier extends StateNotifier<List<Transaction>> {
       attachments: const [],
     );
   }
+
+  Future<void> syncWithFirebase() => _syncWithFirebase();
 }
 
 final transactionsProvider = StateNotifierProvider<TransactionsNotifier, List<Transaction>>((ref) {

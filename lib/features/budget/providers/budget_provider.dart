@@ -126,6 +126,8 @@ class BudgetNotifier extends StateNotifier<List<Budget>> {
     }
   }
 
+  Future<void> syncWithFirebase() => _syncWithFirebase();
+
   Future<void> addBudget(Budget budget) async {
     try {
       debugPrint('[BudgetNotifier] Adding new budget ${budget.id}');

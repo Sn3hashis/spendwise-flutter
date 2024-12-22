@@ -15,9 +15,9 @@ class SyncService {
     debugPrint('[SyncService] Starting full sync...');
     try {
       await Future.wait([
-        ref.read(categoriesProvider.notifier)._syncWithFirebase(),
-        ref.read(transactionsProvider.notifier)._syncWithFirebase(),
-        ref.read(budgetProvider.notifier)._syncWithFirebase(),
+        ref.read(categoriesProvider.notifier).syncWithFirebase(),
+        ref.read(transactionsProvider.notifier).syncWithFirebase(),
+        ref.read(budgetProvider.notifier).syncWithFirebase(),
       ]);
       debugPrint('[SyncService] Full sync completed successfully');
     } catch (e) {

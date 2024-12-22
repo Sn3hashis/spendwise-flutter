@@ -130,7 +130,9 @@ class Transaction {
       id: json['id'] as String,
       description: json['description'] as String,
       amount: json['amount'] as double,
-      date: DateTime.parse(json['date'] as String),
+      date: json['date'] is Timestamp
+          ? (json['date'] as Timestamp).toDate()
+          : DateTime.parse(json['date'] as String),
       category: Category.fromJson(json['category'] as Map<String, dynamic>),
       budgetId: json['budgetId'] as String?,
       type: TransactionType.values.firstWhere(
@@ -152,7 +154,9 @@ class Transaction {
             )
           : null,
       repeatEndDate: json['repeatEndDate'] != null 
-          ? DateTime.parse(json['repeatEndDate'] as String) 
+          ? json['repeatEndDate'] is Timestamp
+              ? (json['repeatEndDate'] as Timestamp).toDate()
+              : DateTime.parse(json['repeatEndDate'] as String)
           : null,
       payeeId: json['payeeId'] as String?,
       fromPayee: json['fromPayee'] != null 
@@ -163,7 +167,9 @@ class Transaction {
           : null,
       note: json['note'] as String?,
       updatedAt: json['updatedAt'] != null 
-          ? DateTime.parse(json['updatedAt'] as String)
+          ? json['updatedAt'] is Timestamp
+              ? (json['updatedAt'] as Timestamp).toDate()
+              : DateTime.parse(json['updatedAt'] as String)
           : DateTime.now(),
     );
   }

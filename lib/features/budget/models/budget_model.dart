@@ -86,20 +86,24 @@ class Budget {
     return Budget(
       id: json['id'] as String,
       name: json['name'] as String,
-      amount: (json['amount'] as num).toDouble(),
-      spent: (json['spent'] as num?)?.toDouble() ?? 0.0,
+      amount: json['amount'] as double,
+      spent: json['spent'] as double? ?? 0.0,
       category: Category.fromJson(json['category'] as Map<String, dynamic>),
       startDate: DateTime.parse(json['startDate'] as String),
       endDate: DateTime.parse(json['endDate'] as String),
-      alertThreshold: (json['alertThreshold'] as num?)?.toDouble() ?? 0.8,
+      alertThreshold: json['alertThreshold'] as double? ?? 0.8,
       isRecurring: json['isRecurring'] as bool? ?? false,
-      recurringType: RecurringType.values.firstWhere(
-        (type) => type.toString() == json['recurringType'],
-        orElse: () => RecurringType.monthly,
-      ),
+      recurringType: json['recurringType'] != null
+          ? RecurringType.values.firstWhere(
+              (type) => type.toString() == json['recurringType'],
+              orElse: () => RecurringType.monthly,
+            )
+          : RecurringType.monthly,
       hasNotified: json['hasNotified'] as bool? ?? false,
-      updatedAt: json['updatedAt'] != null 
-          ? (json['updatedAt'] as Timestamp).toDate()
+      updatedAt: json['updatedAt'] != null
+          ? json['updatedAt'] is Timestamp
+              ? (json['updatedAt'] as Timestamp).toDate()
+              : DateTime.parse(json['updatedAt'] as String)
           : DateTime.now(),
     );
   }
@@ -108,17 +112,14 @@ class Budget {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'name': name,
+      'categoryId': category.id,
       'amount': amount,
       'spent': spent,
-      'category': category.toJson(),
-      'startDate': startDate.toIso8601String(),
-      'endDate': endDate.toIso8601String(),
       'alertThreshold': alertThreshold,
       'isRecurring': isRecurring,
       'recurringType': recurringType.toString(),
       'hasNotified': hasNotified,
-      'updatedAt': updatedAt,
+      'updatedAt': updatedAt.toIso8601String(),
     };
   }
 
