@@ -14,11 +14,15 @@ class SyncService {
   Future<void> syncAll() async {
     debugPrint('[SyncService] Starting full sync...');
     try {
+      // First sync categories since transactions and budgets depend on them
+      await ref.read(categoriesProvider.notifier).syncWithFirebase();
+      
+      // Then sync transactions and budgets in parallel
       await Future.wait([
-        ref.read(categoriesProvider.notifier).syncWithFirebase(),
         ref.read(transactionsProvider.notifier).syncWithFirebase(),
         ref.read(budgetProvider.notifier).syncWithFirebase(),
       ]);
+      
       debugPrint('[SyncService] Full sync completed successfully');
     } catch (e) {
       debugPrint('[SyncService] Error during full sync: $e');

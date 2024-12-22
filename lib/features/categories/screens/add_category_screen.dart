@@ -86,29 +86,54 @@ class _AddCategoryScreenState extends ConsumerState<AddCategoryScreen> {
     super.dispose();
   }
 
-  void _saveCategory() {
-    if (_nameController.text.isEmpty) return;
+  void _showAlert(String message, {bool isError = false}) {
+    showCupertinoDialog(
+      context: context,
+      builder: (context) => CupertinoAlertDialog(
+        title: Text(isError ? 'Error' : 'Success'),
+        content: Text(message),
+        actions: [
+          CupertinoDialogAction(
+            child: const Text('OK'),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ],
+      ),
+    );
+  }
 
-    if (widget.category != null) {
-      ref.read(categoriesProvider.notifier).updateCategory(
-        id: widget.category!.id,
-        name: _nameController.text,
-        description: _descriptionController.text,
-        icon: _selectedIcon,
-        color: _selectedColor,
-        type: _selectedType,
-      );
-    } else {
-      ref.read(categoriesProvider.notifier).addCategory(
-        name: _nameController.text,
-        description: _descriptionController.text,
-        icon: _selectedIcon,
-        color: _selectedColor,
-        type: _selectedType,
-      );
+  Future<void> _saveCategory() async {
+    final name = _nameController.text.trim();
+    if (name.isEmpty) {
+      _showAlert('Please enter a category name', isError: true);
+      return;
     }
 
-    Navigator.pop(context);
+    try {
+      final newCategory = Category(
+        id: '', // Will be set by the provider
+        name: name,
+        description: _descriptionController.text.trim(),
+        icon: _selectedIcon,
+        color: _selectedColor,
+        type: _selectedType,
+        isDefault: false,
+      );
+
+      await ref.read(categoriesProvider.notifier).addCategory(newCategory);
+      
+      if (mounted) {
+        Navigator.of(context).pop();
+        _showAlert('Category added successfully');
+      }
+    } catch (e) {
+      if (mounted) {
+        _showAlert(
+          e.toString().replaceAll('Exception: ', ''),
+          isError: true,
+        );
+      }
+    }
   }
 
   @override

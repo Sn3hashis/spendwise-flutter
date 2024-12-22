@@ -20,7 +20,11 @@ class BudgetScreen extends ConsumerStatefulWidget {
 }
 
 class _BudgetScreenState extends ConsumerState<BudgetScreen> {
-  DateTime _selectedMonth = DateTime.now();
+  DateTime _selectedMonth = DateTime(
+    DateTime.now().year,
+    DateTime.now().month,
+    1,
+  );
   bool _isShowingMonthPicker = false;
 
   void _showMonthPicker() {
@@ -34,7 +38,6 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
     final isDarkMode = ref.watch(themeProvider);
     final monthName = DateFormat('MMMM').format(_selectedMonth);
     final budgets = ref.watch(budgetProvider);
-    final transactions = ref.watch(transactionsProvider);
 
     return CupertinoPageScaffold(
       backgroundColor: isDarkMode ? AppTheme.backgroundDark : AppTheme.backgroundLight,
@@ -267,169 +270,107 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
   }
 
   Widget _buildBudgetList(List<Budget> budgets) {
-    return CustomScrollView(
-      slivers: [
-        CupertinoSliverRefreshControl(
-          onRefresh: () async {
-            // Refresh budgets if needed
-          },
-        ),
-        SliverPadding(
-          padding: const EdgeInsets.all(16),
-          sliver: SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, index) {
-                final budget = budgets[index];
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: _buildBudgetCard(budget),
-                );
-              },
-              childCount: budgets.length,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildBudgetCard(Budget budget) {
     final isDarkMode = ref.watch(themeProvider);
-    final currency = ref.watch(currencyProvider);
     final transactions = ref.watch(transactionsProvider);
+    final currency = ref.watch(currencyProvider);
     
-    // Calculate spent amount for this budget
-    final spent = _calculateSpentAmount(budget, transactions);
-    final progress = spent / budget.amount;
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      itemCount: budgets.length,
+      itemBuilder: (context, index) {
+        final budget = budgets[index];
+        final spent = _calculateSpentForBudget(budget, transactions);
+        final progress = (spent / budget.amount).clamp(0.0, 1.0);
+        final remaining = budget.amount - spent;
 
-    Color getProgressColor(double progress) {
-      if (progress >= 1.0) return CupertinoColors.systemRed;
-      if (progress >= 0.8) return CupertinoColors.systemOrange;
-      return budget.category.color;
-    }
-
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          CupertinoPageRoute(
-            builder: (context) => BudgetTransactionsScreen(budget: budget),
+        return Container(
+          margin: const EdgeInsets.only(top: 16),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: isDarkMode ? const Color(0xFF1C1C1E) : CupertinoColors.white,
+            borderRadius: BorderRadius.circular(12),
           ),
-        );
-      },
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: isDarkMode ? AppTheme.cardDark : AppTheme.cardLight,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: budget.category.color.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    budget.category.icon,
-                    color: budget.category.color,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        budget.category.name,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      Text(
-                        budget.isRecurring
-                            ? budget.recurringType?.toString().split('.').last.toUpperCase() ?? 'MONTHLY'
-                            : 'ONE TIME',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: isDarkMode 
-                              ? CupertinoColors.systemGrey 
-                              : CupertinoColors.systemGrey2,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      '${currency.symbol}${budget.amount.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    Text(
-                      'Spent: ${currency.symbol}${spent.toStringAsFixed(2)}',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: isDarkMode 
-                            ? CupertinoColors.systemGrey 
-                            : CupertinoColors.systemGrey2,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Container(
-              height: 24,
-              child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Expanded(
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: LinearProgressIndicator(
-                        value: progress,
-                        backgroundColor: getProgressColor(progress).withOpacity(0.2),
-                        valueColor: AlwaysStoppedAnimation(getProgressColor(progress)),
-                        minHeight: 24,
-                      ),
+                  Text(
+                    budget.category.name,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(width: 12),
                   Text(
-                    '${(progress * 100).toInt()}%',
+                    '${(progress * 100).toStringAsFixed(1)}%',
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 16,
                       fontWeight: FontWeight.w600,
-                      color: getProgressColor(progress),
+                      color: progress >= 1.0
+                          ? CupertinoColors.systemRed
+                          : progress >= 0.9
+                              ? CupertinoColors.systemOrange
+                              : CupertinoColors.systemGreen,
                     ),
                   ),
                 ],
               ),
-            ),
-          ],
-        ),
-      ),
+              const SizedBox(height: 8),
+              Container(
+                height: 8,
+                decoration: BoxDecoration(
+                  color: isDarkMode ? const Color(0xFF2C2C2E) : const Color(0xFFE5E5EA),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: FractionallySizedBox(
+                  alignment: Alignment.centerLeft,
+                  widthFactor: progress,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: progress >= 1.0
+                          ? CupertinoColors.systemRed
+                          : progress >= 0.9
+                              ? CupertinoColors.systemOrange
+                              : CupertinoColors.systemGreen,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Spent: ${currency.symbol}${spent.toStringAsFixed(2)}',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: CupertinoColors.systemGrey,
+                    ),
+                  ),
+                  Text(
+                    'Remaining: ${currency.symbol}${remaining.toStringAsFixed(2)}',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: CupertinoColors.systemGrey,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
-  double _calculateSpentAmount(Budget budget, List<Transaction> transactions) {
+  double _calculateSpentForBudget(Budget budget, List<Transaction> transactions) {
     return transactions
-      .where((t) => 
-        t.category.id == budget.category.id && // Match by category
-        t.type == TransactionType.expense &&
-        budget.isDateInPeriod(t.date))
-      .fold(0.0, (sum, t) => sum + t.amount.abs());
+        .where((t) => t.category.id == budget.category.id)
+        .where((t) => t.type == TransactionType.expense)
+        .where((t) => t.date.year == _selectedMonth.year && t.date.month == _selectedMonth.month)
+        .fold(0.0, (sum, t) => sum + t.amount.abs());
   }
 }
-

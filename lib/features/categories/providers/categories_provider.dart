@@ -305,26 +305,47 @@ class CategoriesNotifier extends StateNotifier<List<Category>> {
     _syncWithFirebase();
   }
 
-  Future<void> addCategory({
-    required String name,
-    required String description,
-    required IconData icon,
-    required Color color,
-    required CategoryType type,
-  }) async {
-    final newCategory = Category(
-      id: _uuid.v4(),
-      name: name,
-      description: description,
-      icon: icon,
-      color: color,
-      type: type,
-      isDefault: false,
-    );
+  Future<void> addCategory(Category category) async {
+    try {
+      debugPrint('[CategoriesNotifier] Adding new category ${category.name}');
+      
+      // Check if category with same name exists
+      final existingCategory = state.where((c) => 
+        c.name.toLowerCase() == category.name.toLowerCase() &&
+        c.type == category.type
+      ).firstOrNull;
+      
+      if (existingCategory != null) {
+        throw Exception('A category with this name already exists');
+      }
 
-    state = [...state, newCategory];
-    await _syncWithFirebase();
-    await _saveToLocal();
+      // Use category name as document ID (sanitized for Firestore)
+      final docId = category.name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_');
+      
+      final user = _auth.currentUser;
+      if (user == null) throw Exception('User not logged in');
+
+      final docRef = _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('categories')
+          .doc(docId);
+
+      // Create category with the sanitized name as ID
+      final newCategory = category.copyWith(id: docId);
+      
+      await docRef.set(newCategory.toJson());
+      
+      state = [...state, newCategory];
+      
+      // Save to local storage
+      await _saveCategoriesToLocal(state);
+      
+      debugPrint('[CategoriesNotifier] Successfully added category ${category.name}');
+    } catch (e) {
+      debugPrint('[CategoriesNotifier] Error adding category: $e');
+      rethrow;
+    }
   }
 
   Future<void> updateCategory({
@@ -414,7 +435,57 @@ class CategoriesNotifier extends StateNotifier<List<Category>> {
     }
   }
 
-  Future<void> syncWithFirebase() => _syncWithFirebase();
+  Future<void> syncWithFirebase() async {
+    try {
+      debugPrint('[CategoriesNotifier] Starting Firebase sync...');
+      
+      final user = _auth.currentUser;
+      if (user == null) throw Exception('User not logged in');
+
+      final snapshot = await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('categories')
+          .get();
+
+      final categories = snapshot.docs
+          .map((doc) => Category.fromJson(doc.data()))
+          .toList();
+
+      // Merge with default categories
+      final allCategories = [..._defaultCategories];
+      
+      // Add custom categories that don't exist in defaults
+      for (final category in categories) {
+        if (!allCategories.any((c) => c.id == category.id)) {
+          allCategories.add(category);
+        }
+      }
+
+      state = allCategories;
+      await _saveCategoriesToLocal(state);
+      
+      debugPrint('[CategoriesNotifier] Successfully completed Firebase sync');
+    } catch (e) {
+      debugPrint('[CategoriesNotifier] Error during Firebase sync: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> _saveCategoriesToLocal(List<Category> categories) async {
+    try {
+      debugPrint('[CategoriesNotifier] Saving categories to local storage...');
+      final prefs = await SharedPreferences.getInstance();
+      final categoriesJson = categories
+          .map((category) => jsonEncode(category.toJson()))
+          .toList();
+      
+      await prefs.setStringList('categories', categoriesJson);
+      debugPrint('[CategoriesNotifier] Saved ${categories.length} categories to local storage');
+    } catch (e) {
+      debugPrint('[CategoriesNotifier] Error saving categories to local: $e');
+    }
+  }
 
   // Helper methods to get categories by type
   List<Category> getCategoriesByType(CategoryType type) {
