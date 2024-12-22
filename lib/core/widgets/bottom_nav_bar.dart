@@ -1,3 +1,10 @@
+import 'package:flutter/cupertino.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/bottom_navbar_provider.dart';
+import '../providers/theme_provider.dart';
+import '../theme/app_theme.dart';
+import '../services/haptic_service.dart';
+
 class BottomNavBar extends ConsumerWidget {
   const BottomNavBar({super.key});
 
@@ -101,4 +108,4 @@ class BottomNavBar extends ConsumerWidget {
     await HapticService.lightImpact(ref);
     ref.read(bottomNavProvider.notifier).state = index;
   }
-} 
+}
