@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'dart:convert';
 
 enum CategoryType {
   income,
@@ -14,7 +15,17 @@ class Category {
   final IconData icon;
   final Color color;
   final CategoryType type;
-  final bool? isDefault;
+  final bool isDefault;  // Important for identifying default categories
+
+  const Category({
+    required this.id,
+    required this.name,
+    required this.description,
+    required this.icon,
+    required this.color,
+    required this.type,
+    this.isDefault = false,  // Default to false for user-created categories
+  });
 
   // Determine if custom based on both isDefault and id
   bool get isCustom {
@@ -34,32 +45,17 @@ class Category {
     return !defaultIds.contains(id);
   }
 
-  const Category({
-    required this.id,
-    required this.name,
-    required this.description,
-    required this.icon,
-    required this.color,
-    required this.type,
-    this.isDefault,
-  });
-
   factory Category.fromJson(Map<String, dynamic> json) {
     return Category(
-      id: json['id'] as String,
-      name: json['name'] as String,
-      description: json['description'] as String,
-      icon: IconData(
-        json['icon'] as int,
-        fontFamily: json['iconFontFamily'] as String?,
-        fontPackage: json['iconFontPackage'] as String?,
-      ),
-      color: Color(json['color'] as int),
+      id: json['id'],
+      name: json['name'],
+      description: json['description'],
+      icon: IconData(json['icon'], fontFamily: 'CupertinoIcons'), // Fix IconData constructor
+      color: Color(json['color']),
       type: CategoryType.values.firstWhere(
-        (type) => type.toString() == json['type'],
-        orElse: () => CategoryType.expense,
+        (e) => e.toString() == json['type'],
       ),
-      isDefault: json['isDefault'] as bool?,
+      isDefault: json['isDefault'] ?? false,
     );
   }
 
@@ -68,8 +64,6 @@ class Category {
     'name': name,
     'description': description,
     'icon': icon.codePoint,
-    'iconFontFamily': icon.fontFamily,
-    'iconFontPackage': icon.fontPackage,
     'color': color.value,
     'type': type.toString(),
     'isDefault': isDefault,

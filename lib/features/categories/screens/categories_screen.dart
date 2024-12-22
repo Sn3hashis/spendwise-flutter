@@ -6,7 +6,7 @@ import '../models/category_model.dart';
 import '../providers/categories_provider.dart';
 import 'add_category_screen.dart';
 
-class CategoriesScreen extends ConsumerWidget {
+class CategoriesScreen extends ConsumerStatefulWidget {
   final CategoryType? filterType;
 
   const CategoriesScreen({
@@ -15,7 +15,12 @@ class CategoriesScreen extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  _CategoriesScreenState createState() => _CategoriesScreenState();
+}
+
+class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
+  @override
+  Widget build(BuildContext context) {
     final isDarkMode = ref.watch(themeProvider);
     final categories = ref.watch(categoriesProvider);
     
@@ -27,14 +32,14 @@ class CategoriesScreen extends ConsumerWidget {
       });
     }
     
-    final filteredCategories = filterType != null
-        ? sortCategories(categories.where((cat) => cat.type == filterType!).toList())
+    final filteredCategories = widget.filterType != null
+        ? sortCategories(categories.where((cat) => cat.type == widget.filterType!).toList())
         : categories;
     
-    final incomeCategories = filterType == null
+    final incomeCategories = widget.filterType == null
         ? sortCategories(categories.where((cat) => cat.type == CategoryType.income).toList())
         : <Category>[];
-    final expenseCategories = filterType == null
+    final expenseCategories = widget.filterType == null
         ? sortCategories(categories.where((cat) => cat.type == CategoryType.expense).toList())
         : <Category>[];
 
@@ -42,11 +47,11 @@ class CategoriesScreen extends ConsumerWidget {
       backgroundColor: isDarkMode ? AppTheme.backgroundDark : AppTheme.backgroundLight,
       navigationBar: CupertinoNavigationBar(
         backgroundColor: isDarkMode ? AppTheme.backgroundDark : AppTheme.backgroundLight,
-        middle: Text(filterType != null 
-            ? '${filterType == CategoryType.income ? 'Income' : 'Expense'} Categories'
+        middle: Text(widget.filterType != null 
+            ? '${widget.filterType == CategoryType.income ? 'Income' : 'Expense'} Categories'
             : 'Categories'
         ),
-        trailing: filterType == null ? CupertinoButton(
+        trailing: widget.filterType == null ? CupertinoButton(
           padding: EdgeInsets.zero,
           child: const Icon(CupertinoIcons.add),
           onPressed: () {
@@ -62,7 +67,7 @@ class CategoriesScreen extends ConsumerWidget {
       child: SafeArea(
         child: ListView(
           children: [
-            if (filterType == null) ...[
+            if (widget.filterType == null) ...[
               _buildSection(
                 'Income Categories',
                 incomeCategories,
@@ -120,7 +125,7 @@ class CategoriesScreen extends ConsumerWidget {
     return CupertinoButton(
       padding: EdgeInsets.zero,
       onPressed: () {
-        if (filterType != null) {
+        if (widget.filterType != null) {
           Navigator.pop(context, category);
         } else if (category.isCustom) {
           Navigator.push(
@@ -189,8 +194,8 @@ class CategoriesScreen extends ConsumerWidget {
                   color: CupertinoColors.systemRed,
                   size: 20,
                 ),
-                onPressed: () {
-                  ref.read(categoriesProvider.notifier).deleteCategory(category.id);
+                onPressed: () async {
+                  await _handleCategoryDeletion(category);
                 },
               ),
           ],
@@ -198,4 +203,69 @@ class CategoriesScreen extends ConsumerWidget {
       ),
     );
   }
-} 
+
+  Future<bool> _handleCategoryDeletion(Category category) async {
+    if (category.isDefault) {
+      // Show error message for default category
+      showCupertinoDialog(
+        context: context,
+        builder: (context) => CupertinoAlertDialog(
+          title: const Text('Cannot Delete'),
+          content: const Text('Default categories cannot be deleted'),
+          actions: [
+            CupertinoDialogAction(
+              child: const Text('OK'),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ],
+        ),
+      );
+      return false;
+    }
+
+    // Show delete confirmation for non-default categories
+    final result = await showCupertinoDialog<bool>(
+      context: context,
+      builder: (context) => CupertinoAlertDialog(
+        title: const Text('Delete Category'),
+        content: Text('Are you sure you want to delete ${category.name}?'),
+        actions: [
+          CupertinoDialogAction(
+            isDestructiveAction: true,
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete'),
+          ),
+          CupertinoDialogAction(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+
+    if (result == true) {
+      try {
+        await ref.read(categoriesProvider.notifier).deleteCategory(category.id);
+        return true;
+      } catch (e) {
+        if (!mounted) return false;
+        // Show error message
+        showCupertinoDialog(
+          context: context,
+          builder: (context) => CupertinoAlertDialog(
+            title: const Text('Error'),
+            content: Text(e.toString()),
+            actions: [
+              CupertinoDialogAction(
+                child: const Text('OK'),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+        );
+        return false;
+      }
+    }
+    return false;
+  }
+}

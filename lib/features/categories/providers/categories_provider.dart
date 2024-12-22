@@ -15,6 +15,7 @@ class CategoriesNotifier extends StateNotifier<List<Category>> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final _uuid = const Uuid();
+  final Set<String> _deletedIds = {};  // Add this field
   
   CategoriesNotifier() : super([]) {
     _initializeCategories();
@@ -376,16 +377,38 @@ class CategoriesNotifier extends StateNotifier<List<Category>> {
   }
 
   Future<void> deleteCategory(String id) async {
-    final category = getCategoryById(id);
-    // Only allow deletion of custom categories
-    if (category == null || !category.isCustom) {
-      debugPrint('Cannot delete default category: ${category?.name}');
-      return;
-    }
+    try {
+      debugPrint('[CategoriesNotifier] Attempting to delete category $id...');
+      
+      // Check if category is default
+      final category = state.firstWhere((c) => c.id == id);
+      if (category.isDefault) {
+        debugPrint('[CategoriesNotifier] Cannot delete default category $id');
+        throw Exception('Cannot delete default category');
+      }
 
-    state = state.where((category) => category.id != id).toList();
-    await _syncWithFirebase();
-    await _saveToLocal();
+      final user = _auth.currentUser;
+      if (user != null) {
+        await _firestore
+            .collection('users')
+            .doc(user.uid)
+            .collection('categories')
+            .doc(id)
+            .delete();
+      }
+
+      _deletedIds.add(id);
+      await _saveDeletedIds();
+
+      final updatedCategories = state.where((c) => c.id != id).toList();
+      state = updatedCategories;
+      await _saveToLocalStorage(updatedCategories);
+      
+      debugPrint('[CategoriesNotifier] Successfully deleted category');
+    } catch (e) {
+      debugPrint('[CategoriesNotifier] Error deleting category: $e');
+      rethrow;
+    }
   }
 
   Future<void> restoreCategoriesFromFirebase() async {
@@ -484,6 +507,32 @@ class CategoriesNotifier extends StateNotifier<List<Category>> {
       debugPrint('[CategoriesNotifier] Saved ${categories.length} categories to local storage');
     } catch (e) {
       debugPrint('[CategoriesNotifier] Error saving categories to local: $e');
+    }
+  }
+
+  Future<void> _loadDeletedIds() async {
+    final prefs = await SharedPreferences.getInstance();
+    final deletedIds = prefs.getStringList('deleted_categories') ?? [];
+    _deletedIds.addAll(deletedIds);
+  }
+
+  Future<void> _saveDeletedIds() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList('deleted_categories', _deletedIds.toList());
+  }
+
+  Future<void> _saveToLocalStorage(List<Category> categories) async {
+    try {
+      debugPrint('[CategoriesNotifier] Saving categories to local storage...');
+      final prefs = await SharedPreferences.getInstance();
+      final categoriesJson = categories
+          .map((category) => jsonEncode(category.toJson()))
+          .toList();
+      
+      await prefs.setStringList('categories', categoriesJson);
+      debugPrint('[CategoriesNotifier] Saved ${categories.length} categories to local storage');
+    } catch (e) {
+      debugPrint('[CategoriesNotifier] Error saving to local storage: $e');
     }
   }
 
