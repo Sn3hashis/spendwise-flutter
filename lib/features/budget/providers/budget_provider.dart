@@ -16,6 +16,7 @@ class BudgetNotifier extends StateNotifier<List<Budget>> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final Ref ref;
+  final Set<String> _deletedIds = {};
 
   BudgetNotifier(this.ref) : super([]) {
     loadBudgets();
@@ -58,11 +59,24 @@ class BudgetNotifier extends StateNotifier<List<Budget>> {
     }
   }
 
+  Future<void> _loadDeletedIds() async {
+    final prefs = await SharedPreferences.getInstance();
+    final deletedIds = prefs.getStringList('deleted_budgets') ?? [];
+    _deletedIds.addAll(deletedIds);
+  }
+
+  Future<void> _saveDeletedIds() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList('deleted_budgets', _deletedIds.toList());
+  }
+
   Future<void> syncWithFirebase() async {
     try {
       debugPrint('[BudgetNotifier] Starting Firebase sync...');
       final user = _auth.currentUser;
       if (user == null) return;
+
+      await _loadDeletedIds();
 
       final snapshot = await _firestore
           .collection('users')
@@ -75,6 +89,9 @@ class BudgetNotifier extends StateNotifier<List<Budget>> {
       final budgets = <Budget>[];
       
       for (final doc in snapshot.docs) {
+        if (_deletedIds.contains(doc.id)) {
+          continue;
+        }
         try {
           final data = doc.data();
           data['id'] = doc.id;
@@ -198,6 +215,9 @@ class BudgetNotifier extends StateNotifier<List<Budget>> {
           .collection('budgets')
           .doc(id)
           .delete();
+
+      _deletedIds.add(id);
+      await _saveDeletedIds();
 
       final updatedBudgets = state.where((budget) => budget.id != id).toList();
       state = updatedBudgets;

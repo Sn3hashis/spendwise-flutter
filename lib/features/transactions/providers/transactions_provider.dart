@@ -14,6 +14,7 @@ class TransactionsNotifier extends StateNotifier<List<Transaction>> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final Ref ref;
+  final Set<String> _deletedIds = {};
   
   TransactionsNotifier(this.ref) : super([]) {
     debugPrint('[TransactionsNotifier] Initializing...');
@@ -71,6 +72,9 @@ class TransactionsNotifier extends StateNotifier<List<Transaction>> {
         return;
       }
 
+      // Load deleted IDs before sync
+      await _loadDeletedIds();
+
       // First, try to get any newer data from Firebase
       final snapshot = await _firestore
           .collection('users')
@@ -106,7 +110,9 @@ class TransactionsNotifier extends StateNotifier<List<Transaction>> {
       }
 
       // Update state with merged transactions
-      state = localTransactions.values.toList()
+      state = localTransactions.values
+          .where((transaction) => !_deletedIds.contains(transaction.id)) // Filter out deleted transactions
+          .toList()
         ..sort((a, b) => b.date.compareTo(a.date));
 
       // Save merged state to local storage
@@ -168,15 +174,41 @@ class TransactionsNotifier extends StateNotifier<List<Transaction>> {
   }
 
   Future<void> deleteTransaction(String id) async {
-    debugPrint('[TransactionsNotifier] Deleting transaction $id...');
-    final updatedTransactions = state.where((transaction) => transaction.id != id).toList();
-    state = updatedTransactions;
-    
-    // First save locally
-    await _saveToLocal();
-    
-    // Then try to sync with Firebase in the background
-    _syncWithFirebase();
+    try {
+      debugPrint('[TransactionsNotifier] Deleting transaction $id...');
+      final user = _auth.currentUser;
+      if (user != null) {
+        await _firestore
+            .collection('users')
+            .doc(user.uid)
+            .collection('transactions')
+            .doc(id)
+            .delete();
+      }
+
+      // Add to deleted IDs set and save
+      _deletedIds.add(id);
+      await _saveDeletedIds();
+
+      // Update local state
+      final updatedTransactions = state.where((t) => t.id != id).toList();
+      state = updatedTransactions;
+      await _saveToLocal();
+      debugPrint('[TransactionsNotifier] Successfully deleted transaction');
+    } catch (e) {
+      debugPrint('[TransactionsNotifier] Error deleting transaction: $e');
+    }
+  }
+
+  Future<void> _loadDeletedIds() async {
+    final prefs = await SharedPreferences.getInstance();
+    final deletedIds = prefs.getStringList('deleted_transactions') ?? [];
+    _deletedIds.addAll(deletedIds);
+  }
+
+  Future<void> _saveDeletedIds() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList('deleted_transactions', _deletedIds.toList());
   }
 
   Transaction createTransaction({
@@ -206,4 +238,4 @@ class TransactionsNotifier extends StateNotifier<List<Transaction>> {
 
 final transactionsProvider = StateNotifierProvider<TransactionsNotifier, List<Transaction>>((ref) {
   return TransactionsNotifier(ref);
-}); 
+});
