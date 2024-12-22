@@ -57,8 +57,7 @@ dependencies:
   cloud_firestore: ^4.15.4
   google_sign_in: ^6.2.1
   mailer: ^6.1.0
-  local_auth: ^2.3.0
- 
+  local_auth: ^2.3.0 
 
 dev_dependencies:
   flutter_test:

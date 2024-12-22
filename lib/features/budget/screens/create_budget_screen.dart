@@ -116,22 +116,10 @@ class _CreateBudgetScreenState extends ConsumerState<CreateBudgetScreen> {
 
     await HapticService.lightImpact(ref);
 
-    final amount = double.parse(_amountController.text);
-    final now = DateTime.now();
-    
-    final budget = widget.budget?.copyWith(
-      name: _nameController.text,
-      amount: amount,
-      category: _selectedCategory!,
-      startDate: _startDate,
-      endDate: _endDate,
-      isRecurring: _isRecurring,
-      recurringType: _recurringType,
-      alertThreshold: _alertThreshold,
-    ) ?? Budget(
+    final budget = Budget(
       id: const Uuid().v4(),
       name: _nameController.text,
-      amount: amount,
+      amount: double.parse(_amountController.text),
       category: _selectedCategory!,
       startDate: _startDate,
       endDate: _endDate,

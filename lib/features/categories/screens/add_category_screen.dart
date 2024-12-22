@@ -68,7 +68,8 @@ class _AddCategoryScreenState extends ConsumerState<AddCategoryScreen> {
   @override
   void initState() {
     super.initState();
-    if (widget.category != null && !widget.category!.isCustom) {
+    // Don't allow editing default categories
+    if (widget.category != null && widget.category!.isDefault == true) {
       Navigator.pop(context);
     }
     _nameController = TextEditingController(text: widget.category?.name);
@@ -88,20 +89,23 @@ class _AddCategoryScreenState extends ConsumerState<AddCategoryScreen> {
   void _saveCategory() {
     if (_nameController.text.isEmpty) return;
 
-    final category = Category(
-      id: widget.category?.id ?? DateTime.now().toString(),
-      name: _nameController.text,
-      description: _descriptionController.text,
-      icon: _selectedIcon,
-      color: _selectedColor,
-      type: _selectedType,
-      isCustom: true,
-    );
-
     if (widget.category != null) {
-      ref.read(categoriesProvider.notifier).updateCategory(category);
+      ref.read(categoriesProvider.notifier).updateCategory(
+        id: widget.category!.id,
+        name: _nameController.text,
+        description: _descriptionController.text,
+        icon: _selectedIcon,
+        color: _selectedColor,
+        type: _selectedType,
+      );
     } else {
-      ref.read(categoriesProvider.notifier).addCategory(category);
+      ref.read(categoriesProvider.notifier).addCategory(
+        name: _nameController.text,
+        description: _descriptionController.text,
+        icon: _selectedIcon,
+        color: _selectedColor,
+        type: _selectedType,
+      );
     }
 
     Navigator.pop(context);

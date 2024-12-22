@@ -6,127 +6,167 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../models/budget_model.dart';
 import '../../categories/models/category_model.dart';
-import '../../categories/providers/category_provider.dart';
+import '../../categories/providers/categories_provider.dart';
 import 'package:uuid/uuid.dart';
 
 class BudgetNotifier extends StateNotifier<List<Budget>> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final Ref ref;
+  final _uuid = const Uuid();
   
   BudgetNotifier(this.ref) : super([]) {
-    _loadBudgets();
+    debugPrint('[BudgetNotifier] Initializing...');
+    _loadFromLocal();
   }
 
-  Future<void> _loadBudgets() async {
-    final prefs = await SharedPreferences.getInstance();
-    final budgetsJson = prefs.getStringList('budgets') ?? [];
-    
-    state = budgetsJson
-        .map((json) => Budget.fromJson(jsonDecode(json)))
-        .toList();
-  }
-
-  Future<void> _saveBudgets(List<Budget> budgets) async {
-    final prefs = await SharedPreferences.getInstance();
-    final budgetsJson = budgets
-        .map((budget) => jsonEncode(budget.toJson()))
-        .toList();
-    
-    await prefs.setStringList('budgets', budgetsJson);
-    
-    // Sync with Firebase in the background
-    _syncWithFirebase(budgets);
-  }
-
-  Future<void> _syncWithFirebase(List<Budget> budgets) async {
+  Future<void> _loadFromLocal() async {
     try {
-      final user = _auth.currentUser;
-      if (user == null) return;
-
-      final batch = _firestore.batch();
-      final userDoc = _firestore.collection('users').doc(user.uid);
-      final budgetsRef = userDoc.collection('budgets');
-
-      // Get existing budgets to handle deletions
-      final existingDocs = await budgetsRef.get();
-      final existingIds = existingDocs.docs.map((doc) => doc.id).toSet();
-      final newIds = budgets.map((budget) => budget.id).toSet();
-
-      // Handle deletions
-      for (final docId in existingIds.difference(newIds)) {
-        batch.delete(budgetsRef.doc(docId));
-      }
-
-      // Handle updates and additions
-      for (final budget in budgets) {
-        final docRef = budgetsRef.doc(budget.id);
-        batch.set(docRef, {
-          ...budget.toJson(),
-          'categoryId': budget.category.id, // Store category reference
-          'updatedAt': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
-      }
-
-      await batch.commit();
+      debugPrint('[BudgetNotifier] Loading budgets from local storage...');
+      final prefs = await SharedPreferences.getInstance();
+      final budgetsJson = prefs.getStringList('budgets') ?? [];
+      
+      state = budgetsJson
+          .map((json) => Budget.fromJson(jsonDecode(json)))
+          .toList();
+      
+      debugPrint('[BudgetNotifier] Loaded ${state.length} budgets from local storage');
+      
+      // After loading from local, try to sync with Firebase
+      _syncWithFirebase();
     } catch (e) {
-      debugPrint('Error syncing budgets with Firebase: $e');
+      debugPrint('[BudgetNotifier] Error loading budgets from local: $e');
     }
   }
 
-  Future<void> restoreBudgetsFromFirebase() async {
+  Future<void> _saveToLocal() async {
     try {
-      final user = _auth.currentUser;
-      if (user == null) return;
+      debugPrint('[BudgetNotifier] Saving budgets to local storage...');
+      final prefs = await SharedPreferences.getInstance();
+      final budgetsJson = state
+          .map((budget) => jsonEncode(budget.toJson()))
+          .toList();
+      
+      await prefs.setStringList('budgets', budgetsJson);
+      debugPrint('[BudgetNotifier] Saved ${state.length} budgets to local storage');
+    } catch (e) {
+      debugPrint('[BudgetNotifier] Error saving budgets to local: $e');
+    }
+  }
 
-      final categories = ref.read(categoryProvider);
+  Future<void> _syncWithFirebase() async {
+    try {
+      debugPrint('[BudgetNotifier] Starting Firebase sync...');
+      final user = _auth.currentUser;
+      if (user == null) {
+        debugPrint('[BudgetNotifier] No user logged in, skipping Firebase sync');
+        return;
+      }
+
+      // First, try to get any newer data from Firebase
       final snapshot = await _firestore
           .collection('users')
           .doc(user.uid)
           .collection('budgets')
+          .orderBy('updatedAt', descending: true)
           .get();
 
-      final budgets = snapshot.docs.map((doc) {
-        final data = doc.data();
-        final categoryId = data['categoryId'] as String;
-        final category = categories.firstWhere(
-          (cat) => cat.id == categoryId,
-          orElse: () => throw 'Category not found: $categoryId',
-        );
-        
-        return Budget.fromJson({
-          ...data,
-          'id': doc.id,
-          'category': category.toJson(),
-        });
-      }).toList();
+      debugPrint('[BudgetNotifier] Found ${snapshot.docs.length} budgets in Firebase');
 
-      state = budgets;
-      await _saveBudgets(budgets);
+      // Create a map of local budgets by ID
+      final localBudgets = Map.fromEntries(
+        state.map((b) => MapEntry(b.id, b))
+      );
+
+      // Process Firebase budgets
+      for (var doc in snapshot.docs) {
+        final data = doc.data();
+        data['id'] = doc.id;
+        final firebaseBudget = Budget.fromJson(data);
+        
+        // If budget exists locally, keep the newer one based on updatedAt
+        if (localBudgets.containsKey(firebaseBudget.id)) {
+          final localBudget = localBudgets[firebaseBudget.id]!;
+          if (data['updatedAt'] != null && 
+              (data['updatedAt'] as Timestamp).toDate().isAfter(localBudget.updatedAt)) {
+            localBudgets[firebaseBudget.id] = firebaseBudget;
+          }
+        } else {
+          // If it doesn't exist locally, add it
+          localBudgets[firebaseBudget.id] = firebaseBudget;
+        }
+      }
+
+      // Update state with merged budgets
+      state = localBudgets.values.toList();
+
+      // Save merged state to local storage
+      await _saveToLocal();
+
+      // Now push our changes back to Firebase
+      final batch = _firestore.batch();
+      final budgetsRef = _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('budgets');
+
+      for (var budget in state) {
+        final docRef = budgetsRef.doc(budget.id);
+        final data = {
+          ...budget.toJson(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        };
+        batch.set(docRef, data, SetOptions(merge: true));
+      }
+
+      await batch.commit();
+      debugPrint('[BudgetNotifier] Successfully completed Firebase sync');
     } catch (e) {
-      debugPrint('Error restoring budgets from Firebase: $e');
+      debugPrint('[BudgetNotifier] Error during Firebase sync: $e');
     }
   }
 
-  void addBudget(Budget budget) {
-    final updatedBudgets = [...state, budget];
-    state = updatedBudgets;
-    _saveBudgets(updatedBudgets);
+  Future<void> addBudget(Budget budget) async {
+    try {
+      debugPrint('[BudgetNotifier] Adding new budget ${budget.id}');
+      state = [...state, budget];
+      
+      // First save locally
+      await _saveToLocal();
+      
+      // Then try to sync with Firebase in the background
+      _syncWithFirebase();
+      debugPrint('[BudgetNotifier] Successfully added new budget');
+    } catch (e) {
+      debugPrint('[BudgetNotifier] Error adding budget: $e');
+    }
   }
 
-  void updateBudget(Budget updatedBudget) {
-    final updatedBudgets = state.map((budget) => 
-      budget.id == updatedBudget.id ? updatedBudget : budget
-    ).toList();
+  Future<void> updateBudget(Budget updatedBudget) async {
+    debugPrint('[BudgetNotifier] Updating budget ${updatedBudget.id}...');
+    final updatedBudgets = state.map((budget) {
+      return budget.id == updatedBudget.id ? updatedBudget : budget;
+    }).toList();
     
     state = updatedBudgets;
-    _saveBudgets(updatedBudgets);
+    
+    // First save locally
+    await _saveToLocal();
+    
+    // Then try to sync with Firebase in the background
+    _syncWithFirebase();
   }
 
-  void deleteBudget(String id) {
+  Future<void> deleteBudget(String id) async {
+    debugPrint('[BudgetNotifier] Deleting budget $id...');
     final updatedBudgets = state.where((budget) => budget.id != id).toList();
     state = updatedBudgets;
-    _saveBudgets(updatedBudgets);
+    
+    // First save locally
+    await _saveToLocal();
+    
+    // Then try to sync with Firebase in the background
+    _syncWithFirebase();
   }
 
   void checkBudgetAlerts() {
@@ -150,7 +190,11 @@ class BudgetNotifier extends StateNotifier<List<Budget>> {
     }).toList();
     
     state = updatedBudgets;
-    _saveBudgets(updatedBudgets);
+    _syncWithFirebase();
+  }
+
+  Future<void> loadBudgets() async {
+    await _loadFromLocal();
   }
 }
 

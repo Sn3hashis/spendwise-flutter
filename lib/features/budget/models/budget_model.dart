@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../categories/models/category_model.dart';
 import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart'; // Added import for Timestamp
 
 enum RecurringType {
   daily,
@@ -21,6 +22,7 @@ class Budget {
   final bool isRecurring;
   final RecurringType recurringType;
   final bool hasNotified;
+  final DateTime updatedAt;
 
   Budget({
     required this.id,
@@ -34,7 +36,8 @@ class Budget {
     this.isRecurring = false,
     this.recurringType = RecurringType.monthly,
     this.hasNotified = false,
-  });
+    DateTime? updatedAt,
+  }) : this.updatedAt = updatedAt ?? DateTime.now();
 
   double get progress => spent / amount;
   bool get shouldNotify => progress >= alertThreshold && !hasNotified;
@@ -60,6 +63,7 @@ class Budget {
     bool? isRecurring,
     RecurringType? recurringType,
     bool? hasNotified,
+    DateTime? updatedAt,
   }) {
     return Budget(
       id: id ?? this.id,
@@ -73,6 +77,7 @@ class Budget {
       isRecurring: isRecurring ?? this.isRecurring,
       recurringType: recurringType ?? this.recurringType,
       hasNotified: hasNotified ?? this.hasNotified,
+      updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 
@@ -93,6 +98,9 @@ class Budget {
         orElse: () => RecurringType.monthly,
       ),
       hasNotified: json['hasNotified'] as bool? ?? false,
+      updatedAt: json['updatedAt'] != null 
+          ? (json['updatedAt'] as Timestamp).toDate()
+          : DateTime.now(),
     );
   }
 
@@ -110,6 +118,7 @@ class Budget {
       'isRecurring': isRecurring,
       'recurringType': recurringType.toString(),
       'hasNotified': hasNotified,
+      'updatedAt': updatedAt,
     };
   }
 

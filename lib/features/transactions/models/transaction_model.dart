@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../categories/models/category_model.dart';
 import '../../payees/models/payee_model.dart';
 
@@ -34,15 +35,16 @@ class Transaction {
   final Payee? fromPayee;
   final Payee? toPayee;
   final String? note;
+  final DateTime updatedAt;
 
-  const Transaction({
+  Transaction({
     required this.id,
     required this.description,
     required this.amount,
     required this.date,
     required this.category,
-    required this.currencyCode,
     required this.type,
+    required this.currencyCode,
     this.budgetId,
     this.attachments = const [],
     this.fromWallet,
@@ -54,7 +56,8 @@ class Transaction {
     this.fromPayee,
     this.toPayee,
     this.note,
-  });
+    DateTime? updatedAt,
+  }) : this.updatedAt = updatedAt ?? DateTime.now();
 
   Transaction copyWith({
     String? id,
@@ -75,6 +78,7 @@ class Transaction {
     Payee? fromPayee,
     Payee? toPayee,
     String? note,
+    DateTime? updatedAt,
   }) {
     return Transaction(
       id: id ?? this.id,
@@ -95,6 +99,7 @@ class Transaction {
       fromPayee: fromPayee ?? this.fromPayee,
       toPayee: toPayee ?? this.toPayee,
       note: note ?? this.note,
+      updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 
@@ -117,38 +122,49 @@ class Transaction {
     'fromPayee': fromPayee?.toJson(),
     'toPayee': toPayee?.toJson(),
     'note': note,
+    'updatedAt': updatedAt.toIso8601String(),
   };
 
-  factory Transaction.fromJson(Map<String, dynamic> json) => Transaction(
-    id: json['id'] as String,
-    description: json['description'] as String,
-    amount: json['amount'] as double,
-    date: DateTime.parse(json['date'] as String),
-    category: Category.fromJson(json['category'] as Map<String, dynamic>),
-    currencyCode: json['currencyCode'] as String,
-    type: TransactionType.values.firstWhere(
-      (e) => e.toString() == json['type'],
-    ),
-    budgetId: json['budgetId'] as String?,
-    attachments: List<String>.from(json['attachments'] as List),
-    fromWallet: json['fromWallet'] as String?,
-    toWallet: json['toWallet'] as String?,
-    isRepeat: json['isRepeat'] as bool? ?? false,
-    repeatFrequency: json['repeatFrequency'] != null 
-        ? RepeatFrequency.values.firstWhere(
-            (e) => e.toString() == json['repeatFrequency'],
-          )
-        : null,
-    repeatEndDate: json['repeatEndDate'] != null 
-        ? DateTime.parse(json['repeatEndDate'] as String) 
-        : null,
-    payeeId: json['payeeId'] as String?,
-    fromPayee: json['fromPayee'] != null 
-        ? Payee.fromJson(json['fromPayee'] as Map<String, dynamic>) 
-        : null,
-    toPayee: json['toPayee'] != null 
-        ? Payee.fromJson(json['toPayee'] as Map<String, dynamic>) 
-        : null,
-    note: json['note'] as String?,
-  );
-} 
+  factory Transaction.fromJson(Map<String, dynamic> json) {
+    return Transaction(
+      id: json['id'] as String,
+      description: json['description'] as String,
+      amount: json['amount'] as double,
+      date: DateTime.parse(json['date'] as String),
+      category: Category.fromJson(json['category'] as Map<String, dynamic>),
+      budgetId: json['budgetId'] as String?,
+      type: TransactionType.values.firstWhere(
+        (type) => type.toString() == json['type'],
+        orElse: () => TransactionType.expense,
+      ),
+      attachments: (json['attachments'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList() ??
+          [],
+      currencyCode: json['currencyCode'] as String,
+      fromWallet: json['fromWallet'] as String?,
+      toWallet: json['toWallet'] as String?,
+      isRepeat: json['isRepeat'] as bool? ?? false,
+      repeatFrequency: json['repeatFrequency'] != null
+          ? RepeatFrequency.values.firstWhere(
+              (freq) => freq.toString() == json['repeatFrequency'],
+              orElse: () => RepeatFrequency.monthly,
+            )
+          : null,
+      repeatEndDate: json['repeatEndDate'] != null 
+          ? DateTime.parse(json['repeatEndDate'] as String) 
+          : null,
+      payeeId: json['payeeId'] as String?,
+      fromPayee: json['fromPayee'] != null 
+          ? Payee.fromJson(json['fromPayee'] as Map<String, dynamic>) 
+          : null,
+      toPayee: json['toPayee'] != null 
+          ? Payee.fromJson(json['toPayee'] as Map<String, dynamic>) 
+          : null,
+      note: json['note'] as String?,
+      updatedAt: json['updatedAt'] != null 
+          ? DateTime.parse(json['updatedAt'] as String)
+          : DateTime.now(),
+    );
+  }
+}

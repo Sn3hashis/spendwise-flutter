@@ -14,7 +14,25 @@ class Category {
   final IconData icon;
   final Color color;
   final CategoryType type;
-  final bool isCustom;
+  final bool? isDefault;
+
+  // Determine if custom based on both isDefault and id
+  bool get isCustom {
+    // If isDefault is explicitly set, use that
+    if (isDefault != null) return !isDefault!;
+    
+    // Otherwise, check if this is one of our known default category IDs
+    const defaultIds = {
+      // Income Categories
+      'salary', 'freelance', 'investments', 'rental', 'business', 'other_income',
+      // Expense Categories
+      'food', 'transportation', 'housing', 'utilities', 'insurance', 'healthcare',
+      'savings', 'entertainment', 'shopping', 'education', 'debt', 'other_expense',
+      // Transfer Category
+      'transfer'
+    };
+    return !defaultIds.contains(id);
+  }
 
   const Category({
     required this.id,
@@ -23,7 +41,7 @@ class Category {
     required this.icon,
     required this.color,
     required this.type,
-    this.isCustom = false,
+    this.isDefault,
   });
 
   factory Category.fromJson(Map<String, dynamic> json) {
@@ -41,7 +59,7 @@ class Category {
         (type) => type.toString() == json['type'],
         orElse: () => CategoryType.expense,
       ),
-      isCustom: json['isCustom'] as bool? ?? false,
+      isDefault: json['isDefault'] as bool?,
     );
   }
 
@@ -54,7 +72,7 @@ class Category {
     'iconFontPackage': icon.fontPackage,
     'color': color.value,
     'type': type.toString(),
-    'isCustom': isCustom,
+    'isDefault': isDefault,
   };
 
   Category copyWith({
@@ -64,7 +82,7 @@ class Category {
     IconData? icon,
     Color? color,
     CategoryType? type,
-    bool? isCustom,
+    bool? isDefault,
   }) {
     return Category(
       id: id ?? this.id,
@@ -73,7 +91,7 @@ class Category {
       icon: icon ?? this.icon,
       color: color ?? this.color,
       type: type ?? this.type,
-      isCustom: isCustom ?? this.isCustom,
+      isDefault: isDefault ?? this.isDefault,
     );
   }
-} 
+}

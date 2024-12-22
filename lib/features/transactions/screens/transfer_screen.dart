@@ -179,6 +179,7 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
         icon: CupertinoIcons.arrow_right_arrow_left,
         color: const Color(0xFF7F3DFF),
         type: CategoryType.transfer,
+        isDefault: true,
       ),
       date: DateTime.now(),
       currencyCode: ref.read(settingsProvider).currency,

@@ -8,13 +8,13 @@ import 'package:spendwise/features/auth/providers/pin_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../categories/providers/categories_provider.dart';
 
 import '../providers/pin_provider.dart';
 import '../providers/user_provider.dart';
 import '../providers/security_preferences_provider.dart';
 import '../../transactions/providers/transactions_provider.dart';
 import '../../budget/providers/budget_provider.dart';
-import '../../categories/providers/category_provider.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -113,11 +113,7 @@ class AuthService {
       await _createOrUpdateUserDocument(userCredential.user!);
       
       // Then restore all data in parallel
-      await Future.wait<void>([
-        ref.read(categoryProvider.notifier).restoreUserCategoriesFromFirebase(),
-        ref.read(budgetProvider.notifier).restoreBudgetsFromFirebase(),
-        ref.read(transactionsProvider.notifier).restoreTransactionsFromFirebase(),
-      ]);
+      await _restoreUserData();
       
       return userCredential;
     } on FirebaseAuthException catch (e) {
@@ -168,6 +164,30 @@ class AuthService {
     } catch (e) {
       debugPrint('Error updating user document: $e');
       // Don't rethrow - this is not critical for login
+    }
+  }
+
+  Future<void> _initializeUserData() async {
+    try {
+      debugPrint('[AuthService] Initializing user data...');
+      await ref.read(categoriesProvider.notifier).loadCategories();
+      await ref.read(transactionsProvider.notifier).loadTransactions();
+      await ref.read(budgetProvider.notifier).loadBudgets();
+      debugPrint('[AuthService] User data initialized successfully');
+    } catch (e) {
+      debugPrint('[AuthService] Error initializing user data: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> _restoreUserData() async {
+    try {
+      debugPrint('[AuthService] Restoring user data...');
+      await _initializeUserData();
+      debugPrint('[AuthService] User data restored successfully');
+    } catch (e) {
+      debugPrint('[AuthService] Error restoring user data: $e');
+      rethrow;
     }
   }
 
