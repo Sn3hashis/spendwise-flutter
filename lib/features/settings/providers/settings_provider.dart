@@ -3,6 +3,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart' show debugPrint;
 import '../services/settings_service.dart';
 import '../../auth/providers/security_preferences_provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:convert';
 
 final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
   throw UnimplementedError();
@@ -58,122 +61,162 @@ class Settings {
       'notifications': notifications,
     };
   }
+
+  factory Settings.fromJson(Map<String, dynamic> json) {
+    return Settings(
+      theme: json['theme'],
+      currency: json['currency'],
+      language: json['language'],
+      haptics: json['haptics'],
+      security: json['security'],
+      notifications: json['notifications'],
+    );
+  }
 }
 
 class SettingsNotifier extends StateNotifier<Settings> {
-  final SettingsService _settingsService;
-  final Ref _ref;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  SettingsNotifier(this._settingsService, this._ref) : super(Settings()) {
-    _initializeSettings();
+  SettingsNotifier() : super(Settings()) {
+    loadSettings();
   }
 
-  Future<void> _initializeSettings() async {
+  Future<void> loadSettings() async {
     try {
-      final settings = await _settingsService.loadSettings();
-      state = Settings(
-        theme: settings['theme'] ?? 'System',
-        currency: settings['currency'] ?? 'USD',
-        language: settings['language'] ?? 'English',
-        haptics: settings['haptics'] ?? 'On',
-        security: settings['security'] ?? 'Off',
-        notifications: settings['notifications'] ?? 'On',
-      );
+      debugPrint('[SettingsNotifier] Loading settings...');
+      
+      // First try to load from local storage
+      final prefs = await SharedPreferences.getInstance();
+      final settingsJson = prefs.getString('settings');
+      
+      if (settingsJson != null) {
+        state = Settings.fromJson(jsonDecode(settingsJson));
+        debugPrint('[SettingsNotifier] Loaded settings from local storage');
+      }
+      
+      // Then sync with Firebase
+      await syncWithFirebase();
     } catch (e) {
-      debugPrint('Error initializing settings: $e');
+      debugPrint('[SettingsNotifier] Error loading settings: $e');
+    }
+  }
+
+  Future<void> _saveToLocalStorage(Settings settings) async {
+    try {
+      debugPrint('[SettingsNotifier] Saving settings to local storage...');
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('settings', jsonEncode(settings.toJson()));
+      debugPrint('[SettingsNotifier] Successfully saved settings to local storage');
+    } catch (e) {
+      debugPrint('[SettingsNotifier] Error saving to local storage: $e');
+    }
+  }
+
+  Future<void> syncWithFirebase() async {
+    try {
+      debugPrint('[SettingsNotifier] Starting Firebase sync...');
+      final user = _auth.currentUser;
+      if (user == null) {
+        debugPrint('[SettingsNotifier] No user logged in, skipping sync');
+        return;
+      }
+
+      final settingsDoc = _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('settings')
+          .doc('preferences');
+      
+      try {
+        final doc = await settingsDoc.get();
+        if (doc.exists) {
+          final settings = Settings.fromJson(doc.data()!);
+          state = settings;
+          await _saveToLocalStorage(settings);
+          debugPrint('[SettingsNotifier] Successfully synced settings from Firebase');
+        } else {
+          // Initialize settings document
+          await settingsDoc.set(state.toJson());
+          debugPrint('[SettingsNotifier] Created new settings document in Firebase');
+        }
+      } catch (e) {
+        debugPrint('[SettingsNotifier] Error accessing settings: $e');
+      }
+    } catch (e) {
+      debugPrint('[SettingsNotifier] Error during Firebase sync: $e');
+    }
+  }
+
+  Future<void> updateSettings(Settings settings) async {
+    try {
+      debugPrint('[SettingsNotifier] Updating settings');
+      final user = _auth.currentUser;
+      
+      state = settings;
+      await _saveToLocalStorage(settings);
+      
+      if (user != null) {
+        try {
+          await _firestore
+              .collection('users')
+              .doc(user.uid)
+              .collection('settings')
+              .doc('preferences')
+              .set(settings.toJson(), SetOptions(merge: true));
+          
+          debugPrint('[SettingsNotifier] Successfully updated Firebase settings');
+        } catch (e) {
+          debugPrint('[SettingsNotifier] Error updating Firebase settings: $e');
+        }
+      }
+    } catch (e) {
+      debugPrint('[SettingsNotifier] Error updating settings: $e');
+      rethrow;
     }
   }
 
   Future<void> updateTheme(String theme) async {
-    try {
-      await _settingsService.updateSettings({
-        ...state.toJson(),
-        'theme': theme,
-      });
-      state = state.copyWith(theme: theme);
-    } catch (e) {
-      debugPrint('Error updating theme: $e');
-      rethrow;
-    }
+    final newSettings = state.copyWith(theme: theme);
+    await updateSettings(newSettings);
   }
 
   Future<void> updateCurrency(String currency) async {
-    try {
-      await _settingsService.updateSettings({
-        ...state.toJson(),
-        'currency': currency,
-      });
-      state = state.copyWith(currency: currency);
-    } catch (e) {
-      debugPrint('Error updating currency: $e');
-      rethrow;
-    }
+    final newSettings = state.copyWith(currency: currency);
+    await updateSettings(newSettings);
   }
 
   Future<void> updateLanguage(String language) async {
-    try {
-      await _settingsService.updateSettings({
-        ...state.toJson(),
-        'language': language,
-      });
-      state = state.copyWith(language: language);
-    } catch (e) {
-      debugPrint('Error updating language: $e');
-      rethrow;
-    }
+    final newSettings = state.copyWith(language: language);
+    await updateSettings(newSettings);
   }
 
   Future<void> updateHaptics(String haptics) async {
-    try {
-      await _settingsService.updateSettings({
-        ...state.toJson(),
-        'haptics': haptics,
-      });
-      state = state.copyWith(haptics: haptics);
-    } catch (e) {
-      debugPrint('Error updating haptics: $e');
-      rethrow;
-    }
+    final newSettings = state.copyWith(haptics: haptics);
+    await updateSettings(newSettings);
   }
 
-  Future<void> updateSecurity(String method) async {
-    try {
-      await _settingsService.updateSettings({
-        ...state.toJson(),
-        'security': method,
-      });
-      state = state.copyWith(security: method);
-    } catch (e) {
-      debugPrint('Error updating security: $e');
-      rethrow;
-    }
-  }
-
-  String getCurrentSecurityMethod() {
-    final securityMethod = _ref.read(securityPreferencesProvider);
-    switch (securityMethod) {
-      case SecurityMethod.biometric:
-        return 'Biometric';
-      case SecurityMethod.pin:
-        return 'PIN';
-    }
+  Future<void> updateSecurity(String security) async {
+    final newSettings = state.copyWith(security: security);
+    await updateSettings(newSettings);
   }
 
   Future<void> updateNotifications(String notifications) async {
-    try {
-      await _settingsService.updateSettings({
-        ...state.toJson(),
-        'notifications': notifications,
-      });
-      state = state.copyWith(notifications: notifications);
-    } catch (e) {
-      debugPrint('Error updating notifications: $e');
-      rethrow;
+    final newSettings = state.copyWith(notifications: notifications);
+    await updateSettings(newSettings);
+  }
+
+  String getCurrentSecurityMethod() {
+    final securityMethod = _auth.currentUser;
+    switch (securityMethod) {
+      case null:
+        return 'Off';
+      default:
+        return 'On';
     }
   }
 }
 
 final settingsProvider = StateNotifierProvider<SettingsNotifier, Settings>((ref) {
-  final settingsService = ref.watch(settingsServiceProvider);
-  return SettingsNotifier(settingsService, ref);
-}); 
+  return SettingsNotifier();
+});

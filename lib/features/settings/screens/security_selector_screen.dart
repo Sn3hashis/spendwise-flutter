@@ -1,13 +1,14 @@
-import 'package:flutter/material.dart' show Theme, ThemeData;
 import 'package:flutter/cupertino.dart';
-import '../../../core/theme/app_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/providers/theme_provider.dart';
+import '../../../core/widgets/system_ui_wrapper.dart';
+import '../providers/settings_provider.dart';
+import '../../auth/providers/security_preferences_provider.dart';
+import '../../auth/services/biometric_service.dart';
 import '../../../core/services/toast_service.dart';
 import 'package:lottie/lottie.dart';
 import '../../../core/widgets/haptic_feedback_wrapper.dart';
-import '../../auth/providers/security_preferences_provider.dart';
-import '../../auth/services/biometric_service.dart';
 import '../../auth/screens/pin_entry_screen.dart';
 import '../../auth/providers/pin_provider.dart';
 
@@ -182,41 +183,43 @@ class _SecuritySelectorScreenState extends ConsumerState<SecuritySelectorScreen>
     final securityMethod = ref.watch(securityPreferencesProvider);
     final isDarkMode = ref.watch(themeProvider);
 
-    return CupertinoPageScaffold(
-      backgroundColor: isDarkMode ? AppTheme.backgroundDark : AppTheme.backgroundLight,
-      navigationBar: CupertinoNavigationBar(
+    return SystemUIWrapper(
+      child: CupertinoPageScaffold(
         backgroundColor: isDarkMode ? AppTheme.backgroundDark : AppTheme.backgroundLight,
-        middle: const Text('Security'),
-        border: null,
-      ),
-      child: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            if (_isBiometricAvailable)
+        navigationBar: CupertinoNavigationBar(
+          backgroundColor: isDarkMode ? AppTheme.backgroundDark : AppTheme.backgroundLight,
+          middle: const Text('Security'),
+          border: null,
+        ),
+        child: SafeArea(
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              if (_isBiometricAvailable)
+                _buildSecurityOption(
+                  context: context,
+                  icon: CupertinoIcons.person_crop_circle,
+                  title: 'Biometric',
+                  description: 'Use fingerprint or face ID',
+                  method: SecurityMethod.biometric,
+                  isSelected: securityMethod == SecurityMethod.biometric,
+                  isEnrolled: securityMethod == SecurityMethod.biometric,
+                  isDarkMode: isDarkMode,
+                ),
               _buildSecurityOption(
                 context: context,
-                icon: CupertinoIcons.person_crop_circle,
-                title: 'Biometric',
-                description: 'Use fingerprint or face ID',
-                method: SecurityMethod.biometric,
-                isSelected: securityMethod == SecurityMethod.biometric,
-                isEnrolled: securityMethod == SecurityMethod.biometric,
+                icon: CupertinoIcons.lock_fill,
+                title: 'PIN',
+                description: 'Use 4-digit PIN code',
+                method: SecurityMethod.pin,
+                isSelected: securityMethod == SecurityMethod.pin,
+                isEnrolled: true,
                 isDarkMode: isDarkMode,
               ),
-            _buildSecurityOption(
-              context: context,
-              icon: CupertinoIcons.lock_fill,
-              title: 'PIN',
-              description: 'Use 4-digit PIN code',
-              method: SecurityMethod.pin,
-              isSelected: securityMethod == SecurityMethod.pin,
-              isEnrolled: true,
-              isDarkMode: isDarkMode,
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
-} 
+}
