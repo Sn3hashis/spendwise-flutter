@@ -17,12 +17,14 @@ class CreateBudgetScreen extends ConsumerStatefulWidget {
   final Budget? budget;
   final bool isEditingCategory;
   final Category? category;
+  final bool isGoal;  // Add this parameter
 
   const CreateBudgetScreen({
     super.key,
     this.budget,
     this.isEditingCategory = false,
     this.category,
+    this.isGoal = false,  // Add with default value
   });
 
   @override
@@ -37,6 +39,7 @@ class _CreateBudgetScreenState extends ConsumerState<CreateBudgetScreen> {
   bool _isValid = false;
   double _alertThreshold = 0.8;
   final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _notesController = TextEditingController();
   DateTime _startDate = DateTime.now();
   DateTime _endDate = DateTime.now().add(Duration(days: 30));
   CategoryType _selectedCategoryType = CategoryType.expense;
@@ -54,8 +57,12 @@ class _CreateBudgetScreenState extends ConsumerState<CreateBudgetScreen> {
       _recurringType = widget.budget!.recurringType;
       _alertThreshold = widget.budget!.alertThreshold;
       _nameController.text = widget.budget!.name;
+      _notesController.text = widget.budget!.notes;
       _startDate = widget.budget!.startDate;
       _endDate = widget.budget!.endDate;
+    } else {
+      // Set recurring based on isGoal parameter for new budgets
+      _isRecurring = widget.isGoal;
     }
     _amountController.addListener(_validateInputs);
   }
@@ -64,6 +71,7 @@ class _CreateBudgetScreenState extends ConsumerState<CreateBudgetScreen> {
   void dispose() {
     _amountController.dispose();
     _nameController.dispose();
+    _notesController.dispose();
     super.dispose();
   }
 
@@ -188,7 +196,8 @@ class _CreateBudgetScreenState extends ConsumerState<CreateBudgetScreen> {
 
     final budget = Budget(
       id: widget.budget?.id ?? const Uuid().v4(),
-      name: _nameController.text,
+      name: _selectedCategory!.name, // Use category name instead of nameController
+      notes: _notesController.text,
       amount: double.parse(_amountController.text),
       categoryId: _selectedCategory!.id,
       category: _selectedCategory!,
@@ -199,6 +208,9 @@ class _CreateBudgetScreenState extends ConsumerState<CreateBudgetScreen> {
       alertThreshold: _alertThreshold,
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
+      type: _selectedCategoryType == CategoryType.income 
+          ? BudgetType.income 
+          : BudgetType.expense,
     );
 
     if (mounted) {
@@ -352,6 +364,43 @@ class _CreateBudgetScreenState extends ConsumerState<CreateBudgetScreen> {
     );
   }
 
+  Widget _buildNotesInput(bool isDarkMode) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDarkMode ? AppTheme.cardDark : AppTheme.cardLight,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Notes',
+            style: TextStyle(
+              fontSize: 17,
+              color: isDarkMode 
+                  ? CupertinoColors.white 
+                  : CupertinoColors.black,
+            ),
+          ),
+          const SizedBox(height: 8),
+          CupertinoTextField(
+            controller: _notesController,
+            placeholder: 'Add notes about your budget (optional)',
+            padding: const EdgeInsets.all(12),
+            maxLines: 3,
+            decoration: BoxDecoration(
+              color: isDarkMode 
+                  ? AppTheme.backgroundDark 
+                  : CupertinoColors.systemGrey6,
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDarkMode = ref.watch(themeProvider);
@@ -363,7 +412,9 @@ class _CreateBudgetScreenState extends ConsumerState<CreateBudgetScreen> {
         backgroundColor: CupertinoColors.systemPurple,
         border: null,
         middle: Text(
-          widget.budget != null ? 'Edit Budget' : 'Create Budget',
+          _selectedCategoryType == CategoryType.income
+              ? (widget.budget != null ? 'Edit Goal' : 'Create Goal')
+              : (widget.budget != null ? 'Edit Budget' : 'Create Budget'),
           style: const TextStyle(color: CupertinoColors.white),
         ),
         leading: CupertinoButton(
@@ -386,11 +437,13 @@ class _CreateBudgetScreenState extends ConsumerState<CreateBudgetScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
-            padding: EdgeInsets.fromLTRB(24, 32, 24, 16),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
             child: Text(
-              'How much do yo want to spend?',
-              style: TextStyle(
+              _selectedCategoryType == CategoryType.income
+                  ? 'What is your target?'
+                  : 'How much do you want to spend?',
+              style: const TextStyle(
                 fontSize: 24,
                 color: CupertinoColors.white,
                 fontWeight: FontWeight.w600,
@@ -441,6 +494,8 @@ class _CreateBudgetScreenState extends ConsumerState<CreateBudgetScreen> {
                 padding: const EdgeInsets.all(24),
                 children: [
                   _buildCategorySelector(isDarkMode),
+                  const SizedBox(height: 24),
+                  _buildNotesInput(isDarkMode),
                   const SizedBox(height: 24),
                   
                   // Alert Option

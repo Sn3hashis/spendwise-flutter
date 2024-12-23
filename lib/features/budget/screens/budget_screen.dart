@@ -1,14 +1,14 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:spendwise/core/providers/theme_provider.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/providers/theme_provider.dart';
+
 import '../models/budget_model.dart';
 import '../providers/budget_provider.dart';
-import '../../transactions/widgets/date_range_selector.dart';
 import '../../transactions/models/transaction_model.dart';
 import '../../transactions/providers/transactions_provider.dart';
-import 'package:intl/intl.dart';
+
 import 'create_budget_screen.dart';
 import '../../../core/providers/currency_provider.dart';
 import 'budget_transactions_screen.dart';
@@ -21,47 +21,382 @@ class BudgetScreen extends ConsumerStatefulWidget {
 }
 
 class _BudgetScreenState extends ConsumerState<BudgetScreen> {
-  DateTime _selectedMonth = DateTime(
-    DateTime.now().year,
-    DateTime.now().month,
-    1,
-  );
-  bool _isShowingMonthPicker = false;
+  bool _showBudgets = true;
 
-  void _showMonthPicker() {
-    setState(() {
-      _isShowingMonthPicker = true;
-    });
+  @override
+  Widget build(BuildContext context) {
+    final isDarkMode = ref.watch(themeProvider);
+    final allBudgets = ref.watch(budgetProvider);
+    
+    // Filter based on selected type and active status
+    final filteredBudgets = allBudgets.where((b) => 
+      b.isActive() && 
+      (_showBudgets ? !b.isRecurring : b.isRecurring)
+    ).toList();
+    
+    return CupertinoPageScaffold(
+      backgroundColor: isDarkMode ? AppTheme.backgroundDark : AppTheme.backgroundLight,
+      child: SafeArea(
+        child: CustomScrollView(
+          slivers: [
+            // Header Section with Segment Control
+            SliverPersistentHeader(
+              pinned: true,
+              delegate: _BudgetHeaderDelegate(
+                isDarkMode: isDarkMode,
+                showBudgets: _showBudgets,
+                onSegmentChanged: (value) => setState(() => _showBudgets = value),
+              ),
+            ),
+            
+            // Summary Card
+            SliverToBoxAdapter(
+              child: _buildSummaryCard(
+                filteredBudgets, 
+                isDarkMode,
+                _showBudgets ? 'Total Budget' : 'Total Goals',
+              ),
+            ),
+
+            // Create Budget Button
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                child: CupertinoButton(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  color: CupertinoColors.systemPurple,
+                  borderRadius: BorderRadius.circular(12),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      CupertinoPageRoute(
+                        builder: (context) => CreateBudgetScreen(
+                          isGoal: !_showBudgets,
+                        ),
+                      ),
+                    );
+                  },
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(CupertinoIcons.add, color: CupertinoColors.white),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Create New ${_showBudgets ? 'Budget' : 'Goal'}',
+                        style: const TextStyle(
+                          color: CupertinoColors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // Section Title
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                child: Text(
+                  _showBudgets ? 'Active Budgets' : 'Active Goals',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: isDarkMode ? CupertinoColors.white : CupertinoColors.black,
+                  ),
+                ),
+              ),
+            ),
+
+            // Budget Cards
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              sliver: filteredBudgets.isEmpty
+                ? SliverFillRemaining(
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            _showBudgets 
+                                ? CupertinoIcons.money_dollar_circle 
+                                : CupertinoIcons.flag,
+                            size: 64,
+                            color: isDarkMode 
+                                ? CupertinoColors.systemGrey 
+                                : CupertinoColors.systemGrey3,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            _showBudgets 
+                                ? 'No active budgets' 
+                                : 'No active goals',
+                            style: TextStyle(
+                              fontSize: 20,
+                              color: isDarkMode 
+                                  ? CupertinoColors.systemGrey 
+                                  : CupertinoColors.systemGrey3,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                : SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) => _buildBudgetCard(
+                        filteredBudgets[index], 
+                        isDarkMode
+                      ),
+                      childCount: filteredBudgets.length,
+                    ),
+                  ),
+            ),
+
+            // Bottom Padding
+            const SliverPadding(padding: EdgeInsets.only(bottom: 100)),
+          ],
+        ),
+      ),
+    );
   }
 
-  void _showDeleteConfirmation(BuildContext context, WidgetRef ref, Budget budget) {
-    showCupertinoDialog(
-      context: context,
-      builder: (context) => CupertinoAlertDialog(
-        title: const Text('Delete Budget'),
-        content: Text('Are you sure you want to delete "${budget.name}"?'),
-        actions: [
-          CupertinoDialogAction(
-            isDestructiveAction: true,
-            onPressed: () async {
-              Navigator.pop(context);
-              await ref.read(budgetProvider.notifier).deleteBudget(budget.id);
-            },
-            child: const Text('Delete'),
+  Widget _buildSummaryCard(List<Budget> budgets, bool isDarkMode, String title) {
+    final totalBudget = budgets.fold<double>(0, (sum, budget) => sum + budget.amount);
+    final totalSpent = budgets.fold<double>(0, (sum, budget) => sum + budget.spent);
+    
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            CupertinoColors.systemPurple,
+            CupertinoColors.systemPurple.withOpacity(0.8),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: CupertinoColors.systemPurple.withOpacity(0.3),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
-          CupertinoDialogAction(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildSummaryItem(title, totalBudget),
+              _buildSummaryItem('Total Spent', totalSpent),
+            ],
           ),
+          const SizedBox(height: 20),
+          _buildProgressBar(totalSpent / totalBudget),
         ],
       ),
     );
   }
 
-  void _showBudgetActions(BuildContext context, WidgetRef ref, Budget budget) {
+  Widget _buildSummaryItem(String label, double amount) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: CupertinoColors.white,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '\$${amount.toStringAsFixed(2)}',
+          style: const TextStyle(
+            color: CupertinoColors.white,
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Update the budget card design
+  Widget _buildBudgetCard(Budget budget, bool isDarkMode) {
+    final progress = budget.getCurrentProgress();
+    final isOverBudget = progress > 1.0;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: isDarkMode ? AppTheme.cardDark : AppTheme.cardLight,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDarkMode 
+              ? CupertinoColors.systemGrey.withOpacity(0.2)
+              : CupertinoColors.systemGrey6,
+        ),
+      ),
+      child: CupertinoButton(
+        padding: EdgeInsets.zero,
+        onPressed: () => _showBudgetDetails(budget),
+        onLongPress: () => _showBudgetOptions(budget),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Stack(
+            children: [
+              // Existing budget card content
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: budget.category.color.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          budget.category.icon,
+                          color: budget.category.color,
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              budget.name,
+                              style: TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w600,
+                                color: isDarkMode ? CupertinoColors.white : CupertinoColors.black,
+                              ),
+                            ),
+                            Text(
+                              'Ends ${_formatDate(budget.endDate)}',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: isDarkMode ? CupertinoColors.systemGrey : CupertinoColors.systemGrey2,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            '\$${budget.amount.toStringAsFixed(0)}',
+                            style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w600,
+                              color: isDarkMode ? CupertinoColors.white : CupertinoColors.black,
+                            ),
+                          ),
+                          Text(
+                            '${(progress * 100).toStringAsFixed(0)}%',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: isOverBudget ? CupertinoColors.systemRed : budget.category.color,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  _buildProgressBar(progress, isOverBudget, budget.category.color),
+                ],
+              ),
+              // More options button
+              Positioned(
+                top: 0,
+                right: 0,
+                child: CupertinoButton(
+                  padding: EdgeInsets.zero,
+                  onPressed: () => _showBudgetOptions(budget),
+                  child: Icon(
+                    CupertinoIcons.ellipsis,
+                    color: isDarkMode 
+                        ? CupertinoColors.systemGrey 
+                        : CupertinoColors.systemGrey2,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProgressBar(double progress, [bool isOverBudget = false, Color? color]) {
+    final progressColor = isOverBudget 
+        ? CupertinoColors.systemRed 
+        : (color ?? CupertinoColors.white);
+    
+    return Container(
+      height: 6,
+      decoration: BoxDecoration(
+        color: progressColor.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(3),
+      ),
+      child: FractionallySizedBox(
+        alignment: Alignment.centerLeft,
+        widthFactor: progress.clamp(0.0, 1.0),
+        child: Container(
+          decoration: BoxDecoration(
+            color: progressColor,
+            borderRadius: BorderRadius.circular(3),
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final difference = date.difference(now).inDays;
+
+    if (difference == 0) {
+      return 'Today';
+    } else if (difference == 1) {
+      return 'Tomorrow';
+    } else if (difference > 0 && difference < 7) {
+      return 'in $difference days';
+    } else {
+      final month = date.month.toString().padLeft(2, '0');
+      final day = date.day.toString().padLeft(2, '0');
+      return '$day/$month';
+    }
+  }
+
+  void _showBudgetDetails(Budget budget) {
+    Navigator.push(
+      context,
+      CupertinoPageRoute(
+        builder: (context) => BudgetTransactionsScreen(budget: budget),
+      ),
+    );
+  }
+
+  void _showBudgetOptions(Budget budget) {
     showCupertinoModalPopup(
       context: context,
       builder: (context) => CupertinoActionSheet(
+        title: Text(budget.name),
         actions: [
           CupertinoActionSheetAction(
             onPressed: () {
@@ -69,19 +404,22 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
               Navigator.push(
                 context,
                 CupertinoPageRoute(
-                  builder: (context) => CreateBudgetScreen(budget: budget),
+                  builder: (context) => CreateBudgetScreen(
+                    budget: budget,
+                    isGoal: budget.isGoal(),
+                  ),
                 ),
               );
             },
-            child: const Text('Edit Budget'),
+            child: const Text('Edit'),
           ),
           CupertinoActionSheetAction(
             isDestructiveAction: true,
             onPressed: () {
               Navigator.pop(context);
-              _showDeleteConfirmation(context, ref, budget);
+              _showDeleteConfirmation(budget);
             },
-            child: const Text('Delete Budget'),
+            child: const Text('Delete'),
           ),
         ],
         cancelButton: CupertinoActionSheetAction(
@@ -92,132 +430,80 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
     );
   }
 
-  void _showBudgetTransactions(BuildContext context, Budget budget, List<Transaction> transactions) {
-    Navigator.push(
-      context,
-      CupertinoPageRoute(
-        builder: (context) => BudgetTransactionsScreen(budget: budget),
+  void _showDeleteConfirmation(Budget budget) {
+    showCupertinoDialog(
+      context: context,
+      builder: (context) => CupertinoAlertDialog(
+        title: const Text('Delete Budget'),
+        content: Text('Are you sure you want to delete ${budget.name}?'),
+        actions: [
+          CupertinoDialogAction(
+            isDestructiveAction: true,
+            onPressed: () async {
+              Navigator.pop(context);
+              try {
+                await ref.read(budgetProvider.notifier).deleteBudget(budget.id);
+              } catch (e) {
+                if (!mounted) return;
+                showCupertinoDialog(
+                  context: context,
+                  builder: (context) => CupertinoAlertDialog(
+                    title: const Text('Error'),
+                    content: Text('Failed to delete budget: $e'),
+                    actions: [
+                      CupertinoDialogAction(
+                        child: const Text('OK'),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                );
+              }
+            },
+            child: const Text('Delete'),
+          ),
+          CupertinoDialogAction(
+            child: const Text('Cancel'),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ],
       ),
     );
   }
+
+  // ...rest of existing code...
+}
+
+class _BudgetHeaderDelegate extends SliverPersistentHeaderDelegate {
+  final bool isDarkMode;
+  final bool showBudgets;
+  final ValueChanged<bool> onSegmentChanged;
+
+  _BudgetHeaderDelegate({
+    required this.isDarkMode,
+    required this.showBudgets,
+    required this.onSegmentChanged,
+  });
 
   @override
-  Widget build(BuildContext context) {
-    final isDarkMode = ref.watch(themeProvider);
-    final budgets = ref.watch(budgetProvider);
-    final transactions = ref.watch(transactionsProvider);
-    final selectedRange = DateRange(
-      startDate: DateTime(_selectedMonth.year, _selectedMonth.month, 1),
-      endDate: DateTime(_selectedMonth.year, _selectedMonth.month + 1, 0),
-      type: DateRangeType.month,
-    );
-
-    return CupertinoPageScaffold(
-      backgroundColor: isDarkMode ? AppTheme.backgroundDark : AppTheme.backgroundLight,
-      child: SafeArea(
-        child: Column(
-          children: [
-            // Header with Month Selector
-            Container(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: DateRangeSelector(
-                      selectedRange: selectedRange,
-                      onRangeSelected: (range) {
-                        setState(() {
-                          _selectedMonth = range.startDate;
-                        });
-                      },
-                    ),
-                  ),
-                  CupertinoButton(
-                    padding: EdgeInsets.zero,
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        CupertinoPageRoute(
-                          builder: (context) => const CreateBudgetScreen(),
-                        ),
-                      );
-                    },
-                    child: const Icon(CupertinoIcons.add),
-                  ),
-                ],
-              ),
-            ),
-            // Budget List or Empty State
-            Expanded(
-              child: budgets.isEmpty 
-                ? _buildEmptyState()
-                : _buildBudgetList(budgets),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEmptyState() {
-    final isDarkMode = ref.watch(themeProvider);
-    
-    return Center(
+  Widget build(context, shrinkExtent, overlapsContent) {
+    return Container(
+      height: maxExtent,
+      color: isDarkMode ? AppTheme.backgroundDark : AppTheme.backgroundLight,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            CupertinoIcons.money_dollar_circle,
-            size: 64,
-            color: isDarkMode 
-                ? CupertinoColors.systemGrey 
-                : CupertinoColors.systemGrey2,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            "You don't have a budget.",
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-              color: isDarkMode 
-                  ? CupertinoColors.systemGrey 
-                  : CupertinoColors.systemGrey2,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            "Let's make one so you in control.",
-            style: TextStyle(
-              fontSize: 16,
-              color: isDarkMode 
-                  ? CupertinoColors.systemGrey 
-                  : CupertinoColors.systemGrey2,
-            ),
-          ),
-          const SizedBox(height: 32),
-          CupertinoButton(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 32,
-              vertical: 16,
-            ),
-            borderRadius: BorderRadius.circular(30),
-            color: CupertinoColors.systemPurple,
-            onPressed: () {
-              Navigator.push(
-                context,
-                CupertinoPageRoute(
-                  builder: (context) => const CreateBudgetScreen(),
-                ),
-              );
-            },
-            child: const Text(
-              'Create a budget',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: CupertinoColors.white,
-              ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: CupertinoSegmentedControl<bool>(
+              selectedColor: CupertinoColors.systemPurple,
+              padding: EdgeInsets.zero,
+              children: {
+                true: _buildSegment('Budgets', true),
+                false: _buildSegment('Goals', false),
+              },
+              groupValue: showBudgets,
+              onValueChanged: onSegmentChanged,
             ),
           ),
         ],
@@ -225,137 +511,28 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
     );
   }
 
-  Widget _buildBudgetList(List<Budget> budgets) {
-    final isDarkMode = ref.watch(themeProvider);
-    final transactions = ref.watch(transactionsProvider);
-    final currency = ref.watch(currencyProvider);
-    
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      itemCount: budgets.length,
-      itemBuilder: (context, index) {
-        final budget = budgets[index];
-        final spent = _calculateSpentForBudget(budget, transactions);
-        final progress = (spent / budget.amount).clamp(0.0, 1.0);
-        final remaining = budget.amount - spent;
-
-        return CupertinoButton(
-          padding: EdgeInsets.zero,
-          onPressed: () => _showBudgetTransactions(context, budget, transactions),
-          child: Container(
-            margin: const EdgeInsets.only(top: 16),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: isDarkMode ? const Color(0xFF1C1C1E) : CupertinoColors.white,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            budget.name,
-                            style: const TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w600,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: BoxDecoration(
-                                  color: budget.category.color.withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Icon(
-                                  budget.category.icon,
-                                  color: budget.category.color,
-                                  size: 12,
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                budget.category.name,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: isDarkMode ? CupertinoColors.systemGrey : CupertinoColors.systemGrey2,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    Text(
-                      '${(progress * 100).toStringAsFixed(1)}%',
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w600,
-                        color: progress >= 1.0
-                            ? CupertinoColors.systemRed
-                            : progress >= 0.9
-                                ? CupertinoColors.systemOrange
-                                : CupertinoColors.systemGreen,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: isDarkMode ? const Color(0xFF2C2C2E) : const Color(0xFFE5E5EA),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: FractionallySizedBox(
-                    alignment: Alignment.centerLeft,
-                    widthFactor: progress,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: progress >= 1.0
-                            ? CupertinoColors.systemRed
-                            : progress >= 0.9
-                                ? CupertinoColors.systemOrange
-                                : CupertinoColors.systemGreen,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Spent: ${currency.symbol}${spent.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: CupertinoColors.systemGrey,
-                      ),
-                    ),
-                    Text(
-                      'Remaining: ${currency.symbol}${remaining.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: CupertinoColors.systemGrey,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        );
-      },
+  Widget _buildSegment(String text, bool isSelected) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: isSelected 
+              ? CupertinoColors.white 
+              : (isDarkMode ? CupertinoColors.white : CupertinoColors.black),
+          fontSize: 16,
+          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+        ),
+      ),
     );
-  }  double _calculateSpentForBudget(Budget budget, List<Transaction> transactions) {    return transactions        .where((t) => t.category.id == budget.category.id)        .where((t) => t.type == TransactionType.expense)        .where((t) => t.date.year == _selectedMonth.year && t.date.month == _selectedMonth.month)        .fold(0.0, (sum, t) => sum + t.amount.abs());  }}
+  }
+
+  @override
+  double get maxExtent => 60;
+
+  @override
+  double get minExtent => 60;
+
+  @override
+  bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) => true;
+}

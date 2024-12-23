@@ -7,6 +7,7 @@ import 'package:spendwise/features/categories/providers/categories_provider.dart
 import 'package:spendwise/features/categories/models/category_model.dart' as category_model;
 import 'dart:convert';
 import '../models/budget_model.dart';
+import '../../categories/models/category_model.dart';
 
 final budgetProvider = StateNotifierProvider<BudgetNotifier, List<Budget>>((ref) {
   return BudgetNotifier(ref);
@@ -19,28 +20,61 @@ class BudgetNotifier extends StateNotifier<List<Budget>> {
   final Set<String> _deletedIds = {};
 
   BudgetNotifier(this.ref) : super([]) {
-    loadBudgets();
+    _initializeBudgets();
   }
 
   Future<void> loadBudgets() async {
+    debugPrint('[BudgetNotifier] Loading budgets...');
+    await _loadFromLocal();
+    await syncWithFirebase();
+  }
+
+  Future<void> _initializeBudgets() async {
     try {
-      debugPrint('[BudgetNotifier] Loading budgets...');
-      
-      // First try to load from local storage
+      // Wait for categories to be initialized first
+      await ref.read(categoriesProvider.notifier).loadCategories();
+      await loadBudgets();
+    } catch (e) {
+      debugPrint('[BudgetNotifier] Error initializing budgets: $e');
+    }
+  }
+
+  Future<void> _loadFromLocal() async {
+    try {
+      debugPrint('[BudgetNotifier] Loading budgets from local storage...');
       final prefs = await SharedPreferences.getInstance();
       final budgetsJson = prefs.getStringList('budgets') ?? [];
       
-      final localBudgets = budgetsJson
-          .map((json) => Budget.fromJson(jsonDecode(json)))
-          .toList();
+      final List<Budget> loadedBudgets = [];
+      final categories = ref.read(categoriesProvider);
+
+      for (final json in budgetsJson) {
+        try {
+          final budgetData = jsonDecode(json);
+          final categoryId = budgetData['categoryId'];
+          
+          // Find category including defaults
+          final category = categories.firstWhere(
+            (c) => c.id == categoryId,
+            orElse: () => throw Exception('Category not found'),
+          );
+          
+          // Update category in budget data
+          budgetData['category'] = category.toJson();
+          
+          loadedBudgets.add(Budget.fromJson(budgetData));
+        } catch (e) {
+          debugPrint('[BudgetNotifier] Error loading budget: $e');
+          // Continue loading other budgets
+          continue;
+        }
+      }
       
-      state = localBudgets;
-      debugPrint('[BudgetNotifier] Loaded ${localBudgets.length} budgets from local storage');
-      
-      // Then sync with Firebase
-      await syncWithFirebase();
+      state = loadedBudgets;
+      debugPrint('[BudgetNotifier] Loaded ${state.length} budgets');
     } catch (e) {
       debugPrint('[BudgetNotifier] Error loading budgets: $e');
+      state = [];
     }
   }
 
@@ -92,6 +126,7 @@ class BudgetNotifier extends StateNotifier<List<Budget>> {
         if (_deletedIds.contains(doc.id)) {
           continue;
         }
+        
         try {
           final data = doc.data();
           data['id'] = doc.id;
@@ -103,50 +138,43 @@ class BudgetNotifier extends StateNotifier<List<Budget>> {
           }
 
           final categories = ref.read(categoriesProvider);
-          debugPrint('[BudgetNotifier] Looking for category with ID: $categoryId');
-          debugPrint('[BudgetNotifier] Available categories: ${categories.map((c) => '${c.id}:${c.name}').join(', ')}');
+          final categoriesDebug = categories.map((c) => "${c.id}:${c.name}").join(", ");
+          debugPrint("[BudgetNotifier] Available categories: $categoriesDebug");
 
           category_model.Category? category;
           try {
-            // Try to find by ID first
             category = categories.firstWhere((cat) => cat.id == categoryId);
           } catch (e) {
-            // If not found by ID, try to find by name (for backward compatibility)
             try {
-              category = categories.firstWhere((cat) => cat.name.toLowerCase() == categoryId.toLowerCase());
-              debugPrint('[BudgetNotifier] Found category by name instead of ID for budget ${doc.id}');
+              category = categories.firstWhere(
+                (cat) => cat.name.toLowerCase() == categoryId.toLowerCase()
+              );
+              debugPrint("[BudgetNotifier] Found category by name for budget ${doc.id}");
             } catch (e) {
-              debugPrint('[BudgetNotifier] Skipping budget ${doc.id}: category not found for ID: $categoryId');
+              debugPrint("[BudgetNotifier] Category not found for budget ${doc.id}");
               continue;
             }
           }
 
-          // Ensure category icon is not lost after sync
           final budgetData = {
             ...data,
-            'category': {
-              ...category.toJson(),
-              // Add icon data if using string representation
-              'icon': category.icon?.codePoint,
-              'fontFamily': category.icon?.fontFamily,
-              'fontPackage': category.icon?.fontPackage,
-            },
+            'category': category.toJson(),
             'name': category.name,
           };
 
           final budget = Budget.fromJson(budgetData);
           budgets.add(budget);
         } catch (e) {
-          debugPrint('[BudgetNotifier] Error converting budget ${doc.id}: $e');
+          debugPrint("[BudgetNotifier] Error processing budget ${doc.id}: $e");
           continue;
         }
       }
 
       state = budgets;
       await _saveToLocalStorage(budgets);
-      debugPrint('[BudgetNotifier] Successfully completed Firebase sync');
+      debugPrint('[BudgetNotifier] Sync complete');
     } catch (e) {
-      debugPrint('[BudgetNotifier] Error during Firebase sync: $e');
+      debugPrint('[BudgetNotifier] Sync error: $e');
     }
   }
 
