@@ -46,15 +46,26 @@ class Category {
   }
 
   factory Category.fromJson(Map<String, dynamic> json) {
+    IconData getIcon() {
+      // Handle different icon storage formats
+      if (json['icon'] is int) {
+        return IconData(
+          json['icon'],
+          fontFamily: json['fontFamily'] ?? 'CupertinoIcons',
+          fontPackage: json['fontPackage'] ?? 'cupertino_icons',
+        );
+      }
+      // Fallback to default icon if something goes wrong
+      return CupertinoIcons.money_dollar;
+    }
+
     return Category(
-      id: json['id'],
-      name: json['name'],
-      description: json['description'],
-      icon: IconData(json['icon'], fontFamily: 'CupertinoIcons'), // Fix IconData constructor
-      color: Color(json['color']),
-      type: CategoryType.values.firstWhere(
-        (e) => e.toString() == json['type'],
-      ),
+      id: json['id'] ?? '',
+      name: json['name'] ?? '',
+      description: json['description'] ?? '',
+      icon: getIcon(),
+      color: Color(json['color'] ?? 0xFF000000),
+      type: CategoryType.values[json['type'] ?? 0],
       isDefault: json['isDefault'] ?? false,
     );
   }
@@ -63,9 +74,11 @@ class Category {
     'id': id,
     'name': name,
     'description': description,
-    'icon': icon.codePoint,
+    'icon': icon.codePoint,  // Store icon as code point
+    'fontFamily': icon.fontFamily,
+    'fontPackage': icon.fontPackage,
     'color': color.value,
-    'type': type.toString(),
+    'type': type.index,
     'isDefault': isDefault,
   };
 

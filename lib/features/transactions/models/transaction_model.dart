@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../categories/models/category_model.dart';
@@ -108,15 +109,20 @@ class Transaction {
     'description': description,
     'amount': amount,
     'date': date.toIso8601String(),
-    'category': category.toJson(),
+    'category': {
+      ...category.toJson(),
+      'icon': category.icon.codePoint.toString(), // Convert to string to ensure consistency
+      'fontFamily': category.icon.fontFamily,
+      'fontPackage': category.icon.fontPackage,
+    },
     'budgetId': budgetId,
-    'type': type.toString(),
+    'type': type.index,
     'attachments': attachments,
     'currencyCode': currencyCode,
     'fromWallet': fromWallet,
     'toWallet': toWallet,
     'isRepeat': isRepeat,
-    'repeatFrequency': repeatFrequency?.toString(),
+    'repeatFrequency': repeatFrequency?.index,
     'repeatEndDate': repeatEndDate?.toIso8601String(),
     'payeeId': payeeId,
     'fromPayee': fromPayee?.toJson(),
@@ -126,51 +132,72 @@ class Transaction {
   };
 
   factory Transaction.fromJson(Map<String, dynamic> json) {
-    return Transaction(
-      id: json['id'] as String,
-      description: json['description'] as String,
-      amount: json['amount'] as double,
-      date: json['date'] is Timestamp
-          ? (json['date'] as Timestamp).toDate()
-          : DateTime.parse(json['date'] as String),
-      category: Category.fromJson(json['category'] as Map<String, dynamic>),
-      budgetId: json['budgetId'] as String?,
-      type: TransactionType.values.firstWhere(
-        (type) => type.toString() == json['type'],
-        orElse: () => TransactionType.expense,
-      ),
-      attachments: (json['attachments'] as List<dynamic>?)
-          ?.map((e) => e as String)
-          .toList() ??
-          [],
-      currencyCode: json['currencyCode'] as String,
-      fromWallet: json['fromWallet'] as String?,
-      toWallet: json['toWallet'] as String?,
-      isRepeat: json['isRepeat'] as bool? ?? false,
-      repeatFrequency: json['repeatFrequency'] != null
-          ? RepeatFrequency.values.firstWhere(
-              (freq) => freq.toString() == json['repeatFrequency'],
-              orElse: () => RepeatFrequency.monthly,
-            )
-          : null,
-      repeatEndDate: json['repeatEndDate'] != null 
-          ? json['repeatEndDate'] is Timestamp
-              ? (json['repeatEndDate'] as Timestamp).toDate()
-              : DateTime.parse(json['repeatEndDate'] as String)
-          : null,
-      payeeId: json['payeeId'] as String?,
-      fromPayee: json['fromPayee'] != null 
-          ? Payee.fromJson(json['fromPayee'] as Map<String, dynamic>) 
-          : null,
-      toPayee: json['toPayee'] != null 
-          ? Payee.fromJson(json['toPayee'] as Map<String, dynamic>) 
-          : null,
-      note: json['note'] as String?,
-      updatedAt: json['updatedAt'] != null 
-          ? json['updatedAt'] is Timestamp
-              ? (json['updatedAt'] as Timestamp).toDate()
-              : DateTime.parse(json['updatedAt'] as String)
-          : DateTime.now(),
-    );
+    try {
+      final categoryJson = json['category'] as Map<String, dynamic>;
+      
+      // Handle icon data conversion
+      IconData getIcon() {
+        try {
+          final iconData = categoryJson['icon'];
+          if (iconData is int) {
+            return IconData(
+              iconData,
+              fontFamily: categoryJson['fontFamily'] ?? 'CupertinoIcons',
+              fontPackage: categoryJson['fontPackage'] ?? 'cupertino_icons',
+            );
+          } else if (iconData is String) {
+            // Convert string to int if needed
+            return IconData(
+              int.parse(iconData),
+              fontFamily: categoryJson['fontFamily'] ?? 'CupertinoIcons',
+              fontPackage: categoryJson['fontPackage'] ?? 'cupertino_icons',
+            );
+          }
+          return CupertinoIcons.money_dollar; // Fallback icon
+        } catch (e) {
+          debugPrint('Error parsing icon data: $e');
+          return CupertinoIcons.money_dollar; // Fallback icon
+        }
+      }
+
+      // Create category with proper icon handling
+      final category = Category(
+        id: categoryJson['id'] ?? '',
+        name: categoryJson['name'] ?? '',
+        description: categoryJson['description'] ?? '',
+        icon: getIcon(),
+        color: Color(categoryJson['color'] ?? 0xFF000000),
+        type: CategoryType.values[categoryJson['type'] ?? 0],
+        isDefault: categoryJson['isDefault'] ?? false,
+      );
+
+      return Transaction(
+        id: json['id'] ?? '',
+        amount: (json['amount'] as num).toDouble(),
+        description: json['description'] ?? '',
+        category: category,
+        date: DateTime.parse(json['date'] as String),
+        type: TransactionType.values[json['type'] ?? 0],
+        currencyCode: json['currencyCode'] ?? 'USD',
+        attachments: List<String>.from(json['attachments'] ?? []),
+        budgetId: json['budgetId'],
+        fromPayee: json['fromPayee'] != null 
+            ? Payee.fromJson(json['fromPayee']) 
+            : null,
+        toPayee: json['toPayee'] != null 
+            ? Payee.fromJson(json['toPayee']) 
+            : null,
+        isRepeat: json['isRepeat'] ?? false,
+        repeatFrequency: json['repeatFrequency'] != null 
+            ? RepeatFrequency.values[json['repeatFrequency']] 
+            : null,
+        repeatEndDate: json['repeatEndDate'] != null 
+            ? DateTime.parse(json['repeatEndDate']) 
+            : null,
+      );
+    } catch (e) {
+      debugPrint('Error parsing transaction: $e');
+      rethrow;
+    }
   }
 }

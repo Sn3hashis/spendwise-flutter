@@ -121,9 +121,16 @@ class BudgetNotifier extends StateNotifier<List<Budget>> {
             }
           }
 
+          // Ensure category icon is not lost after sync
           final budgetData = {
             ...data,
-            'category': category.toJson(),
+            'category': {
+              ...category.toJson(),
+              // Add icon data if using string representation
+              'icon': category.icon?.codePoint,
+              'fontFamily': category.icon?.fontFamily,
+              'fontPackage': category.icon?.fontPackage,
+            },
             'name': category.name,
           };
 
@@ -203,28 +210,35 @@ class BudgetNotifier extends StateNotifier<List<Budget>> {
     }
   }
 
-  Future<void> deleteBudget(String id) async {
+  Future<void> deleteBudget(String budgetId) async {
     try {
-      debugPrint('[BudgetNotifier] Deleting budget $id');
+      debugPrint('[BudgetNotifier] Deleting budget $budgetId');
       final user = _auth.currentUser;
       if (user == null) return;
 
+      // Delete from Firebase
       await _firestore
           .collection('users')
           .doc(user.uid)
           .collection('budgets')
-          .doc(id)
+          .doc(budgetId)
           .delete();
 
-      _deletedIds.add(id);
-      await _saveDeletedIds();
-
-      final updatedBudgets = state.where((budget) => budget.id != id).toList();
+      // Update local state
+      final updatedBudgets = state.where((budget) => budget.id != budgetId).toList();
       state = updatedBudgets;
+      
+      // Update local storage
       await _saveToLocalStorage(updatedBudgets);
+      
+      // Add to deleted IDs
+      _deletedIds.add(budgetId);
+      await _saveDeletedIds();
+      
       debugPrint('[BudgetNotifier] Successfully deleted budget');
     } catch (e) {
       debugPrint('[BudgetNotifier] Error deleting budget: $e');
+      throw Exception('Failed to delete budget: $e');
     }
   }
 

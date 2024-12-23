@@ -11,6 +11,7 @@ import '../providers/budget_provider.dart';
 import '../../../core/providers/currency_provider.dart';
 import 'package:uuid/uuid.dart';
 import 'package:flutter/material.dart' show Colors;
+import '../../transactions/models/transaction_model.dart';
 
 class CreateBudgetScreen extends ConsumerStatefulWidget {
   final Budget? budget;
@@ -28,7 +29,7 @@ class _CreateBudgetScreenState extends ConsumerState<CreateBudgetScreen> {
   final TextEditingController _amountController = TextEditingController();
   Category? _selectedCategory;
   bool _isRecurring = false;
-  RecurringType _recurringType = RecurringType.monthly;
+  RepeatFrequency _recurringType = RepeatFrequency.monthly;
   bool _isValid = false;
   double _alertThreshold = 0.8;
   final TextEditingController _nameController = TextEditingController();
@@ -117,15 +118,18 @@ class _CreateBudgetScreenState extends ConsumerState<CreateBudgetScreen> {
     await HapticService.lightImpact(ref);
 
     final budget = Budget(
-      id: const Uuid().v4(),
+      id: widget.budget?.id ?? const Uuid().v4(),
       name: _nameController.text,
       amount: double.parse(_amountController.text),
+      categoryId: _selectedCategory!.id,
       category: _selectedCategory!,
       startDate: _startDate,
       endDate: _endDate,
       isRecurring: _isRecurring,
       recurringType: _recurringType,
       alertThreshold: _alertThreshold,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
     );
 
     if (mounted) {
@@ -138,15 +142,42 @@ class _CreateBudgetScreenState extends ConsumerState<CreateBudgetScreen> {
     }
   }
 
-  DateTime _getEndDate(DateTime startDate, RecurringType type) {
+  void _showDeleteConfirmation() {
+    showCupertinoDialog(
+      context: context,
+      builder: (context) => CupertinoAlertDialog(
+        title: const Text('Delete Budget'),
+        content: const Text('Are you sure you want to delete this budget?'),
+        actions: [
+          CupertinoDialogAction(
+            child: const Text('Cancel'),
+            onPressed: () => Navigator.pop(context),
+          ),
+          CupertinoDialogAction(
+            isDestructiveAction: true,
+            onPressed: () async {
+              await ref.read(budgetProvider.notifier).deleteBudget(widget.budget!.id);
+              if (mounted) {
+                Navigator.pop(context); // Close dialog
+                Navigator.pop(context); // Close screen
+              }
+            },
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  DateTime _getEndDate(DateTime startDate, RepeatFrequency type) {
     switch (type) {
-      case RecurringType.daily:
+      case RepeatFrequency.daily:
         return startDate.add(const Duration(days: 1));
-      case RecurringType.weekly:
+      case RepeatFrequency.weekly:
         return startDate.add(const Duration(days: 7));
-      case RecurringType.monthly:
+      case RepeatFrequency.monthly:
         return DateTime(startDate.year, startDate.month + 1, startDate.day);
-      case RecurringType.yearly:
+      case RepeatFrequency.yearly:
         return DateTime(startDate.year + 1, startDate.month, startDate.day);
     }
   }
@@ -157,15 +188,15 @@ class _CreateBudgetScreenState extends ConsumerState<CreateBudgetScreen> {
     return CupertinoColors.systemPurple;
   }
 
-  String _getRecurringText(RecurringType type) {
+  String _getRecurringText(RepeatFrequency type) {
     switch (type) {
-      case RecurringType.daily:
+      case RepeatFrequency.daily:
         return 'Daily';
-      case RecurringType.weekly:
+      case RepeatFrequency.weekly:
         return 'Weekly';
-      case RecurringType.monthly:
+      case RepeatFrequency.monthly:
         return 'Monthly';
-      case RecurringType.yearly:
+      case RepeatFrequency.yearly:
         return 'Yearly';
     }
   }
@@ -192,6 +223,14 @@ class _CreateBudgetScreenState extends ConsumerState<CreateBudgetScreen> {
           ),
           onPressed: () => Navigator.pop(context),
         ),
+        trailing: widget.budget != null ? CupertinoButton(
+          padding: EdgeInsets.zero,
+          child: const Icon(
+            CupertinoIcons.delete,
+            color: CupertinoColors.white,
+          ),
+          onPressed: _showDeleteConfirmation,
+        ) : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -417,4 +456,4 @@ class _CreateBudgetScreenState extends ConsumerState<CreateBudgetScreen> {
       ),
     );
   }
-} 
+}
