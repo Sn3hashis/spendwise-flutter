@@ -1,10 +1,12 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:spendwise/features/categories/screens/add_category_screen.dart';
+import 'package:uuid/uuid.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/providers/theme_provider.dart';
 import '../models/category_model.dart';
 import '../providers/categories_provider.dart';
-import 'add_category_screen.dart';
+
 
 class CategoriesScreen extends ConsumerStatefulWidget {
   final CategoryType? filterType;
@@ -19,104 +21,123 @@ class CategoriesScreen extends ConsumerStatefulWidget {
 }
 
 class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
+  int _selectedSegment = 0;
+
   @override
   Widget build(BuildContext context) {
     final isDarkMode = ref.watch(themeProvider);
     final categories = ref.watch(categoriesProvider);
+
+    // Sort and filter categories
+    final incomeCategories = categories
+        .where((cat) => cat.type == CategoryType.income)
+        .toList()
+      ..sort((a, b) => a.name.compareTo(b.name));
     
-    List<Category> sortCategories(List<Category> cats) {
-      return [...cats]..sort((a, b) {
-        if (a.isCustom && !b.isCustom) return -1;
-        if (!a.isCustom && b.isCustom) return 1;
-        return a.name.compareTo(b.name);
-      });
-    }
-    
-    final filteredCategories = widget.filterType != null
-        ? sortCategories(categories.where((cat) => cat.type == widget.filterType!).toList())
-        : categories;
-    
-    final incomeCategories = widget.filterType == null
-        ? sortCategories(categories.where((cat) => cat.type == CategoryType.income).toList())
-        : <Category>[];
-    final expenseCategories = widget.filterType == null
-        ? sortCategories(categories.where((cat) => cat.type == CategoryType.expense).toList())
-        : <Category>[];
+    final expenseCategories = categories
+        .where((cat) => cat.type == CategoryType.expense)
+        .toList()
+      ..sort((a, b) => a.name.compareTo(b.name));
 
     return CupertinoPageScaffold(
       backgroundColor: isDarkMode ? AppTheme.backgroundDark : AppTheme.backgroundLight,
       navigationBar: CupertinoNavigationBar(
         backgroundColor: isDarkMode ? AppTheme.backgroundDark : AppTheme.backgroundLight,
-        middle: Text(widget.filterType != null 
-            ? '${widget.filterType == CategoryType.income ? 'Income' : 'Expense'} Categories'
-            : 'Categories'
-        ),
-        trailing: widget.filterType == null ? CupertinoButton(
+        middle: const Text('Categories'),
+        trailing: CupertinoButton(
           padding: EdgeInsets.zero,
-          child: const Icon(CupertinoIcons.add),
           onPressed: () {
             Navigator.push(
               context,
               CupertinoPageRoute(
-                builder: (context) => const AddCategoryScreen(),
+                builder: (context) => AddCategoryScreen(
+                  category: Category(
+                    id: const Uuid().v4(),
+                    name: '',
+                    description: '',
+                    icon: CupertinoIcons.money_dollar,
+                    color: CupertinoColors.systemBlue,
+                    type: _selectedSegment == 0 
+                        ? CategoryType.income 
+                        : CategoryType.expense,
+                    isDefault: false,
+                  ),
+                  isEditingCategory: true,
+                ),
               ),
             );
           },
-        ) : null,
-      ),
-      child: SafeArea(
-        child: ListView(
-          children: [
-            if (widget.filterType == null) ...[
-              _buildSection(
-                'Income Categories',
-                incomeCategories,
-                isDarkMode,
-                ref,
-              ),
-              _buildSection(
-                'Expense Categories',
-                expenseCategories,
-                isDarkMode,
-                ref,
-              ),
-            ] else
-              _buildSection(
-                '',
-                filteredCategories,
-                isDarkMode,
-                ref,
-              ),
-          ],
+          child: const Icon(CupertinoIcons.add),
         ),
       ),
-    );
-  }
-
-  Widget _buildSection(
-    String title,
-    List<Category> categories,
-    bool isDarkMode,
-    WidgetRef ref,
-  ) {
-    return Builder(
-      builder: (context) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (title.isNotEmpty)
+      child: SafeArea(
+        child: Column(
+          children: [
+            const SizedBox(height: 16),
+            // Segmented Control
             Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text(
-                title,
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                  color: isDarkMode ? CupertinoColors.white : CupertinoColors.black,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: SizedBox(
+                width: double.infinity,
+                child: CupertinoSlidingSegmentedControl<int>(
+                  backgroundColor: isDarkMode 
+                      ? AppTheme.cardDark 
+                      : AppTheme.cardLight,
+                  thumbColor: isDarkMode 
+                      ? const Color(0xFF2C2C2E) 
+                      : CupertinoColors.white,
+                  groupValue: _selectedSegment,
+                  onValueChanged: (value) {
+                    if (value != null) {
+                      setState(() => _selectedSegment = value);
+                    }
+                  },
+                  children: {
+                    0: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                      child: Text(
+                        'Income',
+                        style: TextStyle(
+                          color: isDarkMode 
+                              ? CupertinoColors.white 
+                              : CupertinoColors.black,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    1: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                      child: Text(
+                        'Expense',
+                        style: TextStyle(
+                          color: isDarkMode 
+                              ? CupertinoColors.white 
+                              : CupertinoColors.black,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  },
                 ),
               ),
             ),
-          ...categories.map((category) => _buildCategoryTile(context, category, isDarkMode, ref)),
-        ],
+            const SizedBox(height: 16),
+            // Categories List
+            Expanded(
+              child: ListView.builder(
+                itemCount: _selectedSegment == 0 
+                    ? incomeCategories.length 
+                    : expenseCategories.length,
+                itemBuilder: (context, index) {
+                  final category = _selectedSegment == 0 
+                      ? incomeCategories[index] 
+                      : expenseCategories[index];
+                  return _buildCategoryTile(context, category, isDarkMode, ref);
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -131,7 +152,10 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
           Navigator.push(
             context,
             CupertinoPageRoute(
-              builder: (context) => AddCategoryScreen(category: category),
+              builder: (context) => AddCategoryScreen(
+                category: category,
+                isEditingCategory: true,
+              ),
             ),
           );
         }

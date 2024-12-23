@@ -9,10 +9,12 @@ import '../providers/categories_provider.dart';
 
 class AddCategoryScreen extends ConsumerStatefulWidget {
   final Category? category;
+  final bool isEditingCategory;
 
   const AddCategoryScreen({
     super.key,
     this.category,
+    this.isEditingCategory = false,
   });
 
   @override
@@ -307,4 +309,4 @@ class _AddCategoryScreenState extends ConsumerState<AddCategoryScreen> {
       ),
     );
   }
-} 
+}

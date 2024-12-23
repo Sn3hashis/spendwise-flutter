@@ -15,10 +15,14 @@ import '../../transactions/models/transaction_model.dart';
 
 class CreateBudgetScreen extends ConsumerStatefulWidget {
   final Budget? budget;
+  final bool isEditingCategory;
+  final Category? category;
 
   const CreateBudgetScreen({
     super.key,
     this.budget,
+    this.isEditingCategory = false,
+    this.category,
   });
 
   @override
@@ -35,11 +39,15 @@ class _CreateBudgetScreenState extends ConsumerState<CreateBudgetScreen> {
   final TextEditingController _nameController = TextEditingController();
   DateTime _startDate = DateTime.now();
   DateTime _endDate = DateTime.now().add(Duration(days: 30));
+  CategoryType _selectedCategoryType = CategoryType.expense;
 
   @override
   void initState() {
     super.initState();
-    if (widget.budget != null) {
+    if (widget.isEditingCategory) {
+      _selectedCategory = widget.category;
+      _selectedCategoryType = widget.category?.type ?? CategoryType.expense;
+    } else if (widget.budget != null) {
       _amountController.text = widget.budget!.amount.toString();
       _selectedCategory = widget.budget!.category;
       _isRecurring = widget.budget!.isRecurring;
@@ -68,13 +76,39 @@ class _CreateBudgetScreenState extends ConsumerState<CreateBudgetScreen> {
     });
   }
 
-  void _showCategoryPicker() {
-    final categories = ref.read(categoriesProvider);
+  void _showCategoryPicker() async {
+    await Future.microtask(() {});
+    
+    if (!mounted) return;
+    
+    final categories = ref.read(categoriesProvider)
+        .where((cat) => cat.type == _selectedCategoryType)
+        .toList();
+        
+    if (categories.isEmpty) {
+      showCupertinoDialog(
+        context: context,
+        builder: (context) => CupertinoAlertDialog(
+          title: const Text('No Categories'),
+          content: Text('No ${_selectedCategoryType == CategoryType.income ? 'income' : 'expense'} categories available.'),
+          actions: [
+            CupertinoActionSheetAction(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    categories.sort((a, b) => a.name.compareTo(b.name));
     
     showCupertinoModalPopup(
       context: context,
       builder: (context) => CupertinoActionSheet(
-        title: const Text('Select Category'),
+        title: Text('Select ${_selectedCategoryType == CategoryType.income ? 'Income' : 'Expense'} Category'),
+        message: Text('${categories.length} categories available'),
         actions: categories.map((category) => 
           CupertinoActionSheetAction(
             onPressed: () {
@@ -84,22 +118,57 @@ class _CreateBudgetScreenState extends ConsumerState<CreateBudgetScreen> {
               _validateInputs();
               Navigator.pop(context);
             },
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Icon(category.icon, color: category.color),
-                    const SizedBox(width: 8),
-                    Text(category.name),
-                  ],
-                ),
-                if (category == _selectedCategory)
-                  const Icon(
-                    CupertinoIcons.check_mark,
-                    color: CupertinoColors.activeBlue,
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: category.color.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(category.icon, color: category.color, size: 20),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                category.name,
+                                style: const TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              if (category.description.isNotEmpty)
+                                Text(
+                                  category.description,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: CupertinoColors.systemGrey,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-              ],
+                  if (category == _selectedCategory)
+                    const Icon(
+                      CupertinoIcons.check_mark,
+                      color: CupertinoColors.activeBlue,
+                    ),
+                ],
+              ),
             ),
           ),
         ).toList(),
@@ -201,6 +270,88 @@ class _CreateBudgetScreenState extends ConsumerState<CreateBudgetScreen> {
     }
   }
 
+  Widget _buildCategorySelector(bool isDarkMode) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: isDarkMode ? AppTheme.cardDark : AppTheme.cardLight,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Category Type Selector
+              CupertinoSlidingSegmentedControl<CategoryType>(
+                groupValue: _selectedCategoryType,
+                children: const {
+                  CategoryType.expense: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    child: Text('Expense'),
+                  ),
+                  CategoryType.income: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    child: Text('Income'),
+                  ),
+                },
+                onValueChanged: (value) {
+                  if (value != null) {
+                    setState(() {
+                      _selectedCategoryType = value;
+                      // Clear selected category if type changes
+                      if (_selectedCategory?.type != value) {
+                        _selectedCategory = null;
+                      }
+                    });
+                  }
+                },
+              ),
+              const SizedBox(height: 16),
+              
+              // Category Selector
+              GestureDetector(
+                onTap: _showCategoryPicker,
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: isDarkMode 
+                        ? AppTheme.backgroundDark 
+                        : CupertinoColors.systemGrey6,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      if (_selectedCategory != null) ...[
+                        Icon(
+                          _selectedCategory!.icon,
+                          color: _selectedCategory!.color,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(_selectedCategory!.name),
+                      ] else
+                        Text(
+                          'Select ${_selectedCategoryType == CategoryType.income ? 'Income' : 'Expense'} Category',
+                          style: TextStyle(
+                            color: isDarkMode 
+                                ? CupertinoColors.systemGrey 
+                                : CupertinoColors.systemGrey2,
+                          ),
+                        ),
+                      const Spacer(),
+                      const Icon(CupertinoIcons.chevron_down),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDarkMode = ref.watch(themeProvider);
@@ -289,32 +440,7 @@ class _CreateBudgetScreenState extends ConsumerState<CreateBudgetScreen> {
               child: ListView(
                 padding: const EdgeInsets.all(24),
                 children: [
-                  // Category Selector
-                  GestureDetector(
-                    onTap: _showCategoryPicker,
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: isDarkMode ? AppTheme.cardDark : AppTheme.cardLight,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Row(
-                        children: [
-                          if (_selectedCategory != null) ...[
-                            Icon(
-                              _selectedCategory!.icon,
-                              color: _selectedCategory!.color,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(_selectedCategory!.name),
-                          ] else
-                            const Text('Select Category'),
-                          const Spacer(),
-                          const Icon(CupertinoIcons.chevron_down),
-                        ],
-                      ),
-                    ),
-                  ),
+                  _buildCategorySelector(isDarkMode),
                   const SizedBox(height: 24),
                   
                   // Alert Option
