@@ -38,19 +38,19 @@ class TransactionDetailsScreen extends ConsumerWidget {
                     'Type',
                     style: TextStyle(
                       fontSize: 15,
-                      color: isDarkMode 
-                          ? CupertinoColors.systemGrey 
+                      color: isDarkMode
+                          ? CupertinoColors.systemGrey
                           : CupertinoColors.systemGrey2,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     transaction.type.name.substring(0, 1).toUpperCase() +
-                    transaction.type.name.substring(1),
+                        transaction.type.name.substring(1),
                     style: TextStyle(
                       fontSize: 17,
-                      color: isDarkMode 
-                          ? CupertinoColors.white 
+                      color: isDarkMode
+                          ? CupertinoColors.white
                           : CupertinoColors.black,
                     ),
                     maxLines: 1,
@@ -66,23 +66,27 @@ class TransactionDetailsScreen extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    transaction.type == TransactionType.transfer ? 'To' : 'Category',
+                    transaction.type == TransactionType.transfer
+                        ? 'To'
+                        : 'Category',
                     style: TextStyle(
                       fontSize: 15,
-                      color: isDarkMode 
-                          ? CupertinoColors.systemGrey 
+                      color: isDarkMode
+                          ? CupertinoColors.systemGrey
                           : CupertinoColors.systemGrey2,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    transaction.type == TransactionType.transfer 
-                        ? (transaction.toPayee?.name ?? transaction.toWallet ?? 'Default Wallet')
+                    transaction.type == TransactionType.transfer
+                        ? (transaction.toPayee?.name ??
+                            transaction.toWallet ??
+                            'Default Wallet')
                         : transaction.category.name,
                     style: TextStyle(
                       fontSize: 17,
-                      color: isDarkMode 
-                          ? CupertinoColors.white 
+                      color: isDarkMode
+                          ? CupertinoColors.white
                           : CupertinoColors.black,
                     ),
                     maxLines: 1,
@@ -101,8 +105,8 @@ class TransactionDetailsScreen extends ConsumerWidget {
                     'Wallet',
                     style: TextStyle(
                       fontSize: 15,
-                      color: isDarkMode 
-                          ? CupertinoColors.systemGrey 
+                      color: isDarkMode
+                          ? CupertinoColors.systemGrey
                           : CupertinoColors.systemGrey2,
                     ),
                   ),
@@ -111,8 +115,8 @@ class TransactionDetailsScreen extends ConsumerWidget {
                     transaction.fromWallet ?? 'Default Wallet',
                     style: TextStyle(
                       fontSize: 17,
-                      color: isDarkMode 
-                          ? CupertinoColors.white 
+                      color: isDarkMode
+                          ? CupertinoColors.white
                           : CupertinoColors.black,
                     ),
                     maxLines: 1,
@@ -126,16 +130,18 @@ class TransactionDetailsScreen extends ConsumerWidget {
         const SizedBox(height: 16),
         // Dotted Divider
         Row(
-          children: List.generate(150, (index) => Expanded(
-            child: Container(
-              color: index % 2 == 0 
-                  ? Colors.transparent
-                  : (isDarkMode 
-                      ? const Color(0xFF2C2C2E) 
-                      : const Color(0xFFE5E5EA)),
-              height: 1,
-            ),
-          )),
+          children: List.generate(
+              150,
+              (index) => Expanded(
+                    child: Container(
+                      color: index % 2 == 0
+                          ? Colors.transparent
+                          : (isDarkMode
+                              ? const Color(0xFF2C2C2E)
+                              : const Color(0xFFE5E5EA)),
+                      height: 1,
+                    ),
+                  )),
         ),
       ],
     );
@@ -143,15 +149,13 @@ class TransactionDetailsScreen extends ConsumerWidget {
 
   Widget _buildAttachmentPreview(bool isDarkMode, String attachment) {
     final extension = path.extension(attachment).toLowerCase();
-    
+
     if (extension == '.pdf') {
       return Container(
         width: double.infinity,
         height: 200,
         decoration: BoxDecoration(
-          color: isDarkMode 
-              ? const Color(0xFF2C2C2E) 
-              : const Color(0xFFE5E5EA),
+          color: isDarkMode ? const Color(0xFF2C2C2E) : const Color(0xFFE5E5EA),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
@@ -167,9 +171,8 @@ class TransactionDetailsScreen extends ConsumerWidget {
               path.basename(attachment),
               style: TextStyle(
                 fontSize: 15,
-                color: isDarkMode 
-                    ? CupertinoColors.white 
-                    : CupertinoColors.black,
+                color:
+                    isDarkMode ? CupertinoColors.white : CupertinoColors.black,
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -187,7 +190,8 @@ class TransactionDetailsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildAttachments(BuildContext context, bool isDarkMode, Transaction transaction) {
+  Widget _buildAttachments(
+      BuildContext context, bool isDarkMode, Transaction transaction) {
     if (transaction.attachments.isEmpty) return const SizedBox.shrink();
 
     return Column(
@@ -198,32 +202,34 @@ class TransactionDetailsScreen extends ConsumerWidget {
           'Attachment',
           style: TextStyle(
             fontSize: 17,
-            color: isDarkMode 
-                ? CupertinoColors.systemGrey 
+            color: isDarkMode
+                ? CupertinoColors.systemGrey
                 : CupertinoColors.systemGrey2,
           ),
         ),
         const SizedBox(height: 8),
-        ...transaction.attachments.map((attachment) => Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                CupertinoPageRoute(
-                  fullscreenDialog: true,
-                  builder: (context) => AttachmentViewer(
-                    filePath: attachment,
+        ...transaction.attachments
+            .map((attachment) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        CupertinoPageRoute(
+                          fullscreenDialog: true,
+                          builder: (context) => AttachmentViewer(
+                            filePath: attachment,
+                          ),
+                        ),
+                      );
+                    },
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: _buildAttachmentPreview(isDarkMode, attachment),
+                    ),
                   ),
-                ),
-              );
-            },
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: _buildAttachmentPreview(isDarkMode, attachment),
-            ),
-          ),
-        )).toList(),
+                ))
+            .toList(),
       ],
     );
   }
@@ -243,7 +249,8 @@ class TransactionDetailsScreen extends ConsumerWidget {
     // Auto dismiss after 0.5 seconds and navigate back
     Timer(const Duration(milliseconds: 500), () {
       if (context.mounted) {
-        Navigator.of(context, rootNavigator: true).pop(); // Close success message
+        Navigator.of(context, rootNavigator: true)
+            .pop(); // Close success message
         Navigator.of(context).pop(); // Go back to previous screen
       }
     });
@@ -256,16 +263,20 @@ class TransactionDetailsScreen extends ConsumerWidget {
       useRootNavigator: true,
       builder: (dialogContext) => CupertinoAlertDialog(
         title: const Text('Delete Transaction'),
-        content: const Text('Are you sure you want to delete this transaction? This action cannot be undone.'),
+        content: const Text(
+            'Are you sure you want to delete this transaction? This action cannot be undone.'),
         actions: [
           CupertinoDialogAction(
             isDestructiveAction: true,
             onPressed: () async {
               await HapticService.lightImpact(ref);
               // Delete the transaction
-              ref.read(transactionsProvider.notifier).deleteTransaction(transaction.id);
+              ref
+                  .read(transactionsProvider.notifier)
+                  .deleteTransaction(transaction.id);
               if (dialogContext.mounted) {
-                Navigator.of(dialogContext, rootNavigator: true).pop(); // Close confirmation dialog
+                Navigator.of(dialogContext, rootNavigator: true)
+                    .pop(); // Close confirmation dialog
                 _showDeletedMessage(context); // Show success message
               }
             },
@@ -273,7 +284,8 @@ class TransactionDetailsScreen extends ConsumerWidget {
           ),
           CupertinoDialogAction(
             child: const Text('Cancel'),
-            onPressed: () => Navigator.of(dialogContext, rootNavigator: true).pop(),
+            onPressed: () =>
+                Navigator.of(dialogContext, rootNavigator: true).pop(),
           ),
         ],
       ),
@@ -286,7 +298,8 @@ class TransactionDetailsScreen extends ConsumerWidget {
       barrierDismissible: true,
       builder: (context) => CupertinoAlertDialog(
         title: const Text('Cannot Edit Payee'),
-        content: const Text('Payee transactions cannot be edited to maintain transaction history integrity.'),
+        content: const Text(
+            'Payee transactions cannot be edited to maintain transaction history integrity.'),
         actions: [
           CupertinoDialogAction(
             child: const Text('OK'),
@@ -311,7 +324,8 @@ class TransactionDetailsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isDarkMode = ref.watch(themeProvider);
-    final updatedTransaction = ref.watch(transactionsProvider)
+    final updatedTransaction = ref
+        .watch(transactionsProvider)
         .firstWhere((t) => t.id == transaction.id, orElse: () => transaction);
     final currentCurrency = ref.watch(currencyProvider);
     final backgroundColor = getBackgroundColor(updatedTransaction.type);
@@ -324,7 +338,8 @@ class TransactionDetailsScreen extends ConsumerWidget {
           SafeArea(
             bottom: false,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 12),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 8.0, vertical: 12),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -371,13 +386,13 @@ class TransactionDetailsScreen extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  updatedTransaction.description,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    color: CupertinoColors.white,
-                  ),
-                ),
+                // Text(
+                //   updatedTransaction.description,
+                //   style: const TextStyle(
+                //     fontSize: 20,
+                //     color: CupertinoColors.white,
+                //   ),
+                // ),
                 const SizedBox(height: 8),
                 Text(
                   formatDateTime(updatedTransaction.date),
@@ -393,8 +408,11 @@ class TransactionDetailsScreen extends ConsumerWidget {
           Expanded(
             child: Container(
               decoration: BoxDecoration(
-                color: isDarkMode ? AppTheme.backgroundDark : AppTheme.backgroundLight,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                color: isDarkMode
+                    ? AppTheme.backgroundDark
+                    : AppTheme.backgroundLight,
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(32)),
               ),
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(24),
@@ -411,8 +429,8 @@ class TransactionDetailsScreen extends ConsumerWidget {
                             'Description',
                             style: TextStyle(
                               fontSize: 17,
-                              color: isDarkMode 
-                                  ? CupertinoColors.systemGrey 
+                              color: isDarkMode
+                                  ? CupertinoColors.systemGrey
                                   : CupertinoColors.systemGrey2,
                             ),
                           ),
@@ -421,8 +439,8 @@ class TransactionDetailsScreen extends ConsumerWidget {
                             updatedTransaction.description,
                             style: TextStyle(
                               fontSize: 17,
-                              color: isDarkMode 
-                                  ? CupertinoColors.white 
+                              color: isDarkMode
+                                  ? CupertinoColors.white
                                   : CupertinoColors.black,
                             ),
                           ),
@@ -436,7 +454,8 @@ class TransactionDetailsScreen extends ConsumerWidget {
           ),
           // Edit Button - Show for all transaction types but handle payee transactions differently
           Container(
-            color: isDarkMode ? AppTheme.backgroundDark : AppTheme.backgroundLight,
+            color:
+                isDarkMode ? AppTheme.backgroundDark : AppTheme.backgroundLight,
             padding: EdgeInsets.only(
               left: 24,
               right: 24,
@@ -449,13 +468,13 @@ class TransactionDetailsScreen extends ConsumerWidget {
               color: backgroundColor,
               onPressed: () async {
                 // Show message if it's a payee transaction
-                if (updatedTransaction.payeeId != null || 
-                    updatedTransaction.fromPayee != null || 
+                if (updatedTransaction.payeeId != null ||
+                    updatedTransaction.fromPayee != null ||
                     updatedTransaction.toPayee != null) {
                   _showPayeeEditDisabledMessage(context);
                   return;
                 }
-                
+
                 // Otherwise allow editing
                 await Navigator.push(
                   context,

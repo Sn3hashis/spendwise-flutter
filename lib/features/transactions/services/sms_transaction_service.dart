@@ -89,10 +89,10 @@ class SmsTransactionService {
     debugPrint('🔍 Starting SMS scan for bank messages...');
 
     try {
-      // Get all messages first
+      // Get all messages with increased count
       final allMessages = await _query.querySms(
         kinds: [SmsQueryKind.inbox],
-        count: 100, // Increase if needed
+        count: 500, // Increased from 100 to 500 to get more historical messages
       );
 
       debugPrint('📨 Found ${allMessages.length} total messages');
@@ -108,14 +108,16 @@ class SmsTransactionService {
         if (isFromBank) {
           debugPrint('📱 Processing message from: ${message.address}');
           try {
-            final transaction = await _parseMessageToTransaction(message);
+            final transaction = await _parseMessageToTransaction(
+              message,
+              includeFullMessage: true, // New parameter to include full message
+            );
             if (transaction != null) {
               final exists = await _checkTransactionExists(
                   user.uid, message.id.toString());
               if (!exists) {
                 debugPrint(
                     '💰 New transaction found: ${transaction.amount} ${transaction.currencyCode} from ${message.address}');
-                debugPrint('📝 Message body: ${message.body}');
                 transactions.add(transaction);
               }
             }
@@ -134,7 +136,10 @@ class SmsTransactionService {
     return transactions;
   }
 
-  Future<Transaction?> _parseMessageToTransaction(SmsMessage message) async {
+  Future<Transaction?> _parseMessageToTransaction(
+    SmsMessage message, {
+    bool includeFullMessage = true, // New parameter
+  }) async {
     final messageBody = message.body?.toUpperCase() ?? '';
 
     // Enhanced patterns for Indian bank SMS
@@ -179,6 +184,11 @@ class SmsTransactionService {
 
     if (description.isEmpty) {
       description = type == TransactionType.expense ? 'Payment' : 'Received';
+    }
+
+    // Add full message to description if requested
+    if (includeFullMessage && message.body != null) {
+      description = '$description\n\n${message.body}';
     }
 
     // Extract account/card number
