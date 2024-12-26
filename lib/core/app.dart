@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'widgets/bottom_nav_bar.dart';
 import 'providers/bottom_navbar_provider.dart';
@@ -13,13 +14,19 @@ class App extends ConsumerWidget {
     final isDarkMode = ref.watch(themeProvider);
     final showBottomNavbar = ref.watch(bottomNavbarVisibilityProvider);
 
-    return CupertinoApp(
-      theme: CupertinoThemeData(
+    return MaterialApp(
+      theme: ThemeData(
         brightness: isDarkMode ? Brightness.dark : Brightness.light,
         primaryColor: CupertinoColors.systemPurple,
+        useMaterial3: true,
+        cupertinoOverrideTheme: CupertinoThemeData(
+          brightness: isDarkMode ? Brightness.dark : Brightness.light,
+          primaryColor: CupertinoColors.systemPurple,
+        ),
       ),
       home: CupertinoPageScaffold(
-        backgroundColor: isDarkMode ? AppTheme.backgroundDark : AppTheme.backgroundLight,
+        backgroundColor:
+            isDarkMode ? AppTheme.backgroundDark : AppTheme.backgroundLight,
         child: Stack(
           children: [
             // Your main content goes here
