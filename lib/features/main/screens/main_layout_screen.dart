@@ -22,9 +22,12 @@ class MainLayoutScreen extends ConsumerStatefulWidget {
   ConsumerState<MainLayoutScreen> createState() => _MainLayoutScreenState();
 }
 
-class _MainLayoutScreenState extends ConsumerState<MainLayoutScreen> {
+class _MainLayoutScreenState extends ConsumerState<MainLayoutScreen>
+    with SingleTickerProviderStateMixin {
   int _currentIndex = 0;
   bool _isSubMenuOpen = false;
+  late AnimationController _rotationController;
+  late Animation<double> _rotationAnimation;
 
   final List<Widget> _screens = [
     const HomeScreen(),
@@ -78,6 +81,12 @@ class _MainLayoutScreenState extends ConsumerState<MainLayoutScreen> {
     setState(() {
       _isSubMenuOpen = !_isSubMenuOpen;
     });
+    if (_isSubMenuOpen) {
+      _rotationController.forward();
+    } else {
+      _rotationController.reverse();
+    }
+    HapticFeedback.mediumImpact();
   }
 
   void _handleAddAction(BuildContext context, String type) {
@@ -111,6 +120,10 @@ class _MainLayoutScreenState extends ConsumerState<MainLayoutScreen> {
   }
 
   void _handleNavigation(int index) {
+    if (_isSubMenuOpen && index != 2) {
+      _toggleSubMenu();
+    }
+
     if (index == 2) {
       _toggleSubMenu();
     } else if (index > 2) {
@@ -208,6 +221,28 @@ class _MainLayoutScreenState extends ConsumerState<MainLayoutScreen> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _rotationController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _rotationAnimation = Tween<double>(
+      begin: 0,
+      end: 0.25, // 1/4 turn (90 degrees)
+    ).animate(CurvedAnimation(
+      parent: _rotationController,
+      curve: Curves.easeInOut,
+    ));
+  }
+
+  @override
+  void dispose() {
+    _rotationController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final isDarkMode = ref.watch(themeProvider);
 
@@ -241,37 +276,41 @@ class _MainLayoutScreenState extends ConsumerState<MainLayoutScreen> {
                     border: Border(
                       top: BorderSide(
                         color: isDarkMode
-                            ? AppTheme.bottomNavBarBorderDark
-                            : AppTheme.bottomNavBarBorderLight,
-                        width: 0.5,
+                            ? const Color(0xFF2C2C2E).withOpacity(0.5)
+                            : const Color(0xFFE5E5EA).withOpacity(0.5),
+                        width: 0.3,
                       ),
                     ),
                   ),
                   child: SafeArea(
                     top: false,
                     child: SizedBox(
-                      height: 60,
+                      height: 50,
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
                           _buildNavItem(
-                            icon: CupertinoIcons.house_fill,
+                            icon: CupertinoIcons.house,
+                            selectedIcon: CupertinoIcons.house_fill,
                             label: 'Home',
                             index: 0,
                           ),
                           _buildNavItem(
                             icon: CupertinoIcons.arrow_right_arrow_left,
+                            selectedIcon: CupertinoIcons.arrow_right_arrow_left,
                             label: 'Transactions',
                             index: 1,
                           ),
                           _buildCenterButton(),
                           _buildNavItem(
-                            icon: CupertinoIcons.chart_bar_fill,
+                            icon: CupertinoIcons.chart_bar,
+                            selectedIcon: CupertinoIcons.chart_bar_fill,
                             label: 'Budget',
                             index: 3,
                           ),
                           _buildNavItem(
-                            icon: CupertinoIcons.person_fill,
+                            icon: CupertinoIcons.person,
+                            selectedIcon: CupertinoIcons.person_fill,
                             label: 'Profile',
                             index: 4,
                           ),
@@ -290,77 +329,85 @@ class _MainLayoutScreenState extends ConsumerState<MainLayoutScreen> {
 
   Widget _buildNavItem({
     required IconData icon,
+    required IconData selectedIcon,
     required String label,
     required int index,
   }) {
     final isDarkMode = ref.watch(themeProvider);
-    final isSelected = index > 2
-        ? _currentIndex == index - 1 // For items after center button
-        : _currentIndex == index; // For items before center button
+    final isSelected =
+        index > 2 ? _currentIndex == index - 1 : _currentIndex == index;
 
     return GestureDetector(
-      onTap: () => _handleNavigation(index),
+      onTap: () {
+        _handleNavigation(index);
+        HapticFeedback.selectionClick();
+      },
       behavior: HitTestBehavior.opaque,
       child: SizedBox(
-        width: 70,
-        height: 60,
-        child: Padding(
-          padding: const EdgeInsets.only(top: 8, bottom: 8),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                size: 24,
-                color: isSelected
-                    ? CupertinoColors.activeBlue
-                    : (isDarkMode
-                        ? CupertinoColors.systemGrey
-                        : CupertinoColors.systemGrey2),
-              ),
-              const SizedBox(height: 4),
+        width: 65,
+        height: 50,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              isSelected ? selectedIcon : icon,
+              size: 28,
+              color: isSelected
+                  ? CupertinoColors.activeBlue
+                  : (isDarkMode
+                      ? CupertinoColors.white
+                      : CupertinoColors.black),
+            ),
+            if (isSelected) ...[
+              const SizedBox(height: 2),
               Text(
                 label,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 11,
-                  color: isSelected
-                      ? CupertinoColors.activeBlue
-                      : (isDarkMode
-                          ? CupertinoColors.systemGrey
-                          : CupertinoColors.systemGrey2),
+                  color: CupertinoColors.activeBlue,
+                  fontWeight: FontWeight.w500,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
             ],
-          ),
+          ],
         ),
       ),
     );
   }
 
   Widget _buildCenterButton() {
+    final isDarkMode = ref.watch(themeProvider);
+
     return GestureDetector(
       onTap: _toggleSubMenu,
       child: Container(
-        width: 48,
-        height: 48,
+        width: 42,
+        height: 42,
         decoration: BoxDecoration(
           color: CupertinoColors.activeBlue,
           shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: CupertinoColors.activeBlue.withOpacity(0.3),
-              blurRadius: 8,
-              offset: const Offset(0, 4),
-            ),
-          ],
+          border: Border.all(
+            color: isDarkMode
+                ? const Color(0xFF2C2C2E).withOpacity(0.5)
+                : const Color(0xFFE5E5EA).withOpacity(0.5),
+            width: 0.3,
+          ),
         ),
-        child: const Icon(
-          CupertinoIcons.chevron_up,
-          color: CupertinoColors.white,
-          size: 24,
+        child: AnimatedBuilder(
+          animation: _rotationAnimation,
+          builder: (context, child) {
+            return Transform.rotate(
+              angle: _rotationAnimation.value * 2 * 3.14159,
+              child: Icon(
+                CupertinoIcons.add,
+                color: CupertinoColors.white,
+                size: 22,
+              ),
+            );
+          },
         ),
       ),
     );
