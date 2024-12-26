@@ -3,16 +3,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/theme_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../widgets/transaction_list_item.dart';
-import '../../settings/providers/settings_provider.dart';
 import '../models/transaction_filter.dart';
 import '../models/transaction_model.dart';
 import '../screens/filter_screen.dart';
 import '../widgets/date_range_selector.dart';
 import '../../../core/services/haptic_service.dart';
-import '../../categories/providers/categories_provider.dart';
 import '../providers/transactions_provider.dart';
 import '../providers/transaction_filter_provider.dart';
 import '../../../core/providers/currency_provider.dart';
+import '../services/sms_transaction_service.dart';
+import 'package:flutter/material.dart' show Colors;
+import 'package:modal_bottom_sheet/modal_bottom_sheet.dart';
 
 class TransactionsScreen extends ConsumerStatefulWidget {
   const TransactionsScreen({super.key});
@@ -33,23 +34,21 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       endDate: now,
       type: DateRangeType.month,
     );
-  }
-
-  int _getActiveFilterCount() {
-    final filter = ref.watch(transactionFilterProvider);
-    int count = 0;
-    if (filter.types.isNotEmpty) count++;
-    if (filter.sortBy != SortBy.newest) count++;
-    if (filter.categories.isNotEmpty) count++;
-    return count;
+    // Load initial transactions
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(transactionsProvider.notifier).loadTransactions();
+    });
   }
 
   List<Transaction> _getFilteredTransactions(List<Transaction> transactions) {
     final filter = ref.watch(transactionFilterProvider);
+
     return transactions.where((transaction) {
       // Date range filter
-      final isInDateRange = transaction.date.isAfter(_selectedRange.startDate) && 
-                           transaction.date.isBefore(_selectedRange.endDate.add(const Duration(days: 1)));
+      final isInDateRange = transaction.date.isAfter(
+              _selectedRange.startDate.subtract(const Duration(days: 1))) &&
+          transaction.date
+              .isBefore(_selectedRange.endDate.add(const Duration(days: 1)));
       if (!isInDateRange) return false;
 
       // Transaction type filter
@@ -58,7 +57,13 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       }
 
       // Category filter
-      if (filter.categories.isNotEmpty && !filter.categories.contains(transaction.category.id)) {
+      if (filter.categories.isNotEmpty &&
+          !filter.categories.contains(transaction.category.id)) {
+        return false;
+      }
+
+      // Bank transaction filter
+      if (filter.isBankTransaction && transaction.messageId == null) {
         return false;
       }
 
@@ -78,148 +83,133 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       });
   }
 
-  Transaction _updateTransactionCurrency(Transaction transaction) {
-    final currentCurrency = ref.watch(currencyProvider);
-    return transaction.copyWith(
-      currencyCode: currentCurrency.code,
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    final isDarkMode = ref.watch(themeProvider);
-    final currentCurrency = ref.watch(currencyProvider).code;
     final transactions = ref.watch(transactionsProvider);
-    
-    // Apply filters to transactions
     final filteredTransactions = _getFilteredTransactions(transactions);
+    final isDarkMode = ref.watch(themeProvider);
+    final filter = ref.watch(transactionFilterProvider);
+    final backgroundColor =
+        isDarkMode ? AppTheme.backgroundDark : AppTheme.backgroundLight;
 
     return CupertinoPageScaffold(
-      backgroundColor: isDarkMode ? AppTheme.backgroundDark : AppTheme.backgroundLight,
+      backgroundColor: backgroundColor,
       child: SafeArea(
-        child: Column(
-          children: [
-            // Header with Month Selector
-            Container(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: DateRangeSelector(
-                      selectedRange: _selectedRange,
-                      onRangeSelected: (range) {
-                        setState(() {
-                          _selectedRange = range;
-                        });
-                      },
+        child: CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                child: Row(
+                  children: [
+                    // Date Range Selector
+                    Expanded(
+                      child: DateRangeSelector(
+                        selectedRange: _selectedRange,
+                        onRangeSelected: (range) {
+                          setState(() {
+                            _selectedRange = range;
+                          });
+                        },
+                      ),
                     ),
-                  ),
-                  CupertinoButton(
-                    padding: EdgeInsets.zero,
-                    child: Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        Icon(
-                          CupertinoIcons.slider_horizontal_3,
-                          color: isDarkMode ? CupertinoColors.white : CupertinoColors.black,
-                        ),
-                        if (_getActiveFilterCount() > 0)
-                          Positioned(
-                            top: -8,
-                            right: -8,
-                            child: Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: const BoxDecoration(
-                                color: CupertinoColors.systemPurple,
-                                shape: BoxShape.circle,
-                              ),
-                              constraints: const BoxConstraints(
-                                minWidth: 16,
-                                minHeight: 16,
-                              ),
-                              child: Center(
+                    const SizedBox(width: 8),
+                    // SMS Sync Button
+                    CupertinoButton(
+                      padding: EdgeInsets.zero,
+                      onPressed: () async {
+                        await HapticService.lightImpact(ref);
+                        try {
+                          await ref
+                              .read(smsTransactionServiceProvider)
+                              .syncSmsTransactions();
+                          if (mounted) {
+                            _showAlert('Successfully synced SMS transactions');
+                          }
+                        } catch (e) {
+                          if (mounted) {
+                            _showAlert(e.toString());
+                          }
+                        }
+                      },
+                      child: const Icon(CupertinoIcons.arrow_2_circlepath),
+                    ),
+                    const SizedBox(width: 8),
+                    // Filter Button
+                    CupertinoButton(
+                      padding: EdgeInsets.zero,
+                      onPressed: () async {
+                        await HapticService.lightImpact(ref);
+                        if (!mounted) return;
+
+                        await showCupertinoModalPopup(
+                          context: context,
+                          barrierDismissible: true,
+                          builder: (context) => FilterScreen(
+                            initialFilter: filter,
+                            onApply: (newFilter) {
+                              if (mounted) {
+                                ref
+                                    .read(transactionFilterProvider.notifier)
+                                    .updateFilter(newFilter);
+                              }
+                            },
+                          ),
+                        );
+                      },
+                      child: Stack(
+                        children: [
+                          const Icon(CupertinoIcons.slider_horizontal_3),
+                          if (_getActiveFilterCount() > 0)
+                            Positioned(
+                              right: 0,
+                              top: 0,
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFF7F3DFF),
+                                  shape: BoxShape.circle,
+                                ),
                                 child: Text(
                                   _getActiveFilterCount().toString(),
                                   style: const TextStyle(
                                     color: CupertinoColors.white,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
+                                    fontSize: 10,
                                   ),
                                 ),
                               ),
                             ),
-                          ),
-                      ],
-                    ),
-                    onPressed: () async {
-                      await HapticService.lightImpact(ref);
-                      if (!mounted) return;
-                      
-                      showCupertinoModalPopup<void>(
-                        context: context,
-                        builder: (BuildContext context) => FilterScreen(
-                          initialFilter: ref.read(transactionFilterProvider),
-                          onApply: (filter) {
-                            ref.read(transactionFilterProvider.notifier).updateFilter(filter);
-                          },
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-            // Financial Report Button
-            CupertinoButton(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: CupertinoColors.systemPurple.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    const Text(
-                      'See your financial report',
-                      style: TextStyle(
-                        fontSize: 17,
-                        color: CupertinoColors.systemPurple,
+                        ],
                       ),
-                    ),
-                    const Spacer(),
-                    Icon(
-                      CupertinoIcons.chevron_right,
-                      color: CupertinoColors.systemPurple,
-                      size: 20,
                     ),
                   ],
                 ),
               ),
-              onPressed: () {
-                // TODO: Navigate to financial report
-              },
             ),
-            const SizedBox(height: 8),
-            // Transactions List
-            Expanded(
+            // Transaction List
+            SliverFillRemaining(
+              hasScrollBody: true,
               child: filteredTransactions.isEmpty
                   ? Center(
                       child: Text(
                         'No transactions found',
                         style: TextStyle(
-                          color: isDarkMode ? CupertinoColors.systemGrey : CupertinoColors.systemGrey2,
+                          color: isDarkMode
+                              ? CupertinoColors.white
+                              : CupertinoColors.black,
                           fontSize: 17,
                         ),
                       ),
                     )
                   : ListView.builder(
+                      padding: EdgeInsets.only(
+                        bottom: MediaQuery.of(context).padding.bottom + 16,
+                      ),
                       itemCount: filteredTransactions.length,
                       itemBuilder: (context, index) {
                         final transaction = filteredTransactions[index];
                         return TransactionListItem(
+                          key: ValueKey(transaction.id),
                           transaction: _updateTransactionCurrency(transaction),
                         );
                       },
@@ -227,6 +217,38 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  int _getActiveFilterCount() {
+    final filter = ref.watch(transactionFilterProvider);
+    int count = 0;
+    if (filter.types.isNotEmpty) count++;
+    if (filter.sortBy != SortBy.newest) count++;
+    if (filter.categories.isNotEmpty) count++;
+    if (filter.isBankTransaction) count++;
+    return count;
+  }
+
+  Transaction _updateTransactionCurrency(Transaction transaction) {
+    final currentCurrency = ref.watch(currencyProvider);
+    return transaction.copyWith(
+      currencyCode: currentCurrency.code,
+    );
+  }
+
+  void _showAlert(String message) {
+    showCupertinoDialog(
+      context: context,
+      builder: (context) => CupertinoAlertDialog(
+        content: Text(message),
+        actions: [
+          CupertinoDialogAction(
+            child: const Text('OK'),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ],
       ),
     );
   }

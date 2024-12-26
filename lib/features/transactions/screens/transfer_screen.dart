@@ -16,6 +16,7 @@ import '../models/transaction_model.dart';
 import '../widgets/repeat_dialog.dart';
 import '../../payees/models/payee_model.dart';
 import '../../payees/providers/payees_provider.dart';
+import 'package:uuid/uuid.dart';
 
 class TransferScreen extends ConsumerStatefulWidget {
   const TransferScreen({super.key});
@@ -52,10 +53,10 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
 
   void _validateInputs() {
     setState(() {
-      _isValid = _amountController.text.isNotEmpty && 
-                 double.tryParse(_amountController.text) != null &&
-                 double.parse(_amountController.text) > 0 &&
-                 _toPayee != null;
+      _isValid = _amountController.text.isNotEmpty &&
+          double.tryParse(_amountController.text) != null &&
+          double.parse(_amountController.text) > 0 &&
+          _toPayee != null;
     });
   }
 
@@ -94,9 +95,11 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
                             children: [
                               if (payee.imageUrl != null)
                                 CircleAvatar(
-                                  backgroundImage: payee.imageUrl!.startsWith('http')
-                                      ? NetworkImage(payee.imageUrl!)
-                                      : FileImage(File(payee.imageUrl!)) as ImageProvider,
+                                  backgroundImage:
+                                      payee.imageUrl!.startsWith('http')
+                                          ? NetworkImage(payee.imageUrl!)
+                                          : FileImage(File(payee.imageUrl!))
+                                              as ImageProvider,
                                   radius: 16,
                                 )
                               else
@@ -134,7 +137,7 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
                             ],
                           ),
                         ),
-                        if ((isFromPayee && payee == _fromPayee) || 
+                        if ((isFromPayee && payee == _fromPayee) ||
                             (!isFromPayee && payee == _toPayee))
                           const Padding(
                             padding: EdgeInsets.only(left: 8.0),
@@ -167,9 +170,9 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
     await HapticService.lightImpact(ref);
 
     final amount = double.parse(_amountController.text);
-    
+
     final transaction = Transaction(
-      id: DateTime.now().toString(),
+      id: const Uuid().v4(),
       amount: amount,
       description: _descriptionController.text,
       category: Category(
@@ -190,6 +193,7 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
       isRepeat: _isRepeat,
       repeatFrequency: _isRepeat ? _repeatFrequency : null,
       repeatEndDate: _repeatEndDate,
+      updatedAt: DateTime.now(),
     );
 
     if (mounted) {
@@ -202,12 +206,17 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
   Widget build(BuildContext context) {
     final isDarkMode = ref.watch(themeProvider);
     const themeColor = Color(0xFF007AFF);
-    final backgroundColor = isDarkMode ? AppTheme.backgroundDark : AppTheme.backgroundLight;
+    final backgroundColor =
+        isDarkMode ? AppTheme.backgroundDark : AppTheme.backgroundLight;
     final cardColor = isDarkMode ? AppTheme.cardDark : AppTheme.cardLight;
-    final borderColor = isDarkMode ? const Color(0xFF2C2C2E) : const Color(0xFFE5E5EA);
-    final textColor = isDarkMode ? CupertinoColors.white : CupertinoColors.black;
-    final secondaryTextColor = isDarkMode ? CupertinoColors.systemGrey : CupertinoColors.systemGrey2;
-    final currencySymbol = getCurrencySymbol(ref.watch(settingsProvider).currency);
+    final borderColor =
+        isDarkMode ? const Color(0xFF2C2C2E) : const Color(0xFFE5E5EA);
+    final textColor =
+        isDarkMode ? CupertinoColors.white : CupertinoColors.black;
+    final secondaryTextColor =
+        isDarkMode ? CupertinoColors.systemGrey : CupertinoColors.systemGrey2;
+    final currencySymbol =
+        getCurrencySymbol(ref.watch(settingsProvider).currency);
 
     return CupertinoPageScaffold(
       backgroundColor: themeColor,
@@ -217,7 +226,8 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
           SafeArea(
             bottom: false,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 12),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 8.0, vertical: 12),
               child: Row(
                 children: [
                   CupertinoButton(
@@ -286,7 +296,8 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
                           color: CupertinoColors.white.withOpacity(0.5),
                           fontWeight: FontWeight.bold,
                         ),
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
                       ),
                     ),
                   ],
@@ -299,7 +310,8 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
             child: Container(
               decoration: BoxDecoration(
                 color: backgroundColor,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(32)),
               ),
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(24),
@@ -325,7 +337,8 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
                                 children: [
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           'From',
@@ -390,7 +403,8 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
                                 children: [
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           'To',
@@ -491,11 +505,14 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
                                     scrollDirection: Axis.horizontal,
                                     child: Row(
                                       children: [
-                                        for (int i = 0; i < _attachments.length; i++) ...[
+                                        for (int i = 0;
+                                            i < _attachments.length;
+                                            i++) ...[
                                           if (i > 0) const SizedBox(width: 12),
                                           AttachmentPreview(
                                             filePath: _attachments[i],
-                                            onDelete: () => _deleteAttachment(i),
+                                            onDelete: () =>
+                                                _deleteAttachment(i),
                                             isDarkMode: isDarkMode,
                                           ),
                                         ],
@@ -504,7 +521,8 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
                                           CupertinoButton(
                                             padding: EdgeInsets.zero,
                                             onPressed: () {
-                                              AttachmentService.showAttachmentOptions(
+                                              AttachmentService
+                                                  .showAttachmentOptions(
                                                 context,
                                                 onAttachmentsSelected: (paths) {
                                                   setState(() {
@@ -518,8 +536,10 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
                                               height: 100,
                                               decoration: BoxDecoration(
                                                 color: cardColor,
-                                                borderRadius: BorderRadius.circular(12),
-                                                border: Border.all(color: borderColor),
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                                border: Border.all(
+                                                    color: borderColor),
                                               ),
                                               child: Center(
                                                 child: Icon(
@@ -565,7 +585,7 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
                                     ),
                                   ),
                                   Text(
-                                    _isRepeat 
+                                    _isRepeat
                                         ? '${_repeatFrequency.name.substring(0, 1).toUpperCase()}${_repeatFrequency.name.substring(1)} until ${_repeatEndDate?.toString().split(' ')[0] ?? 'No end date'}'
                                         : 'Repeat transaction',
                                     style: TextStyle(
@@ -587,7 +607,8 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
                                     showCupertinoModalPopup(
                                       context: context,
                                       builder: (context) => ProviderScope(
-                                        parent: ProviderScope.containerOf(context),
+                                        parent:
+                                            ProviderScope.containerOf(context),
                                         child: RepeatDialog(
                                           frequency: _repeatFrequency,
                                           endDate: _repeatEndDate,

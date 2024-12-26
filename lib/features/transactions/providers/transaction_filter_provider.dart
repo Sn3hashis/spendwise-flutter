@@ -9,10 +9,16 @@ class TransactionFilterNotifier extends StateNotifier<TransactionFilter> {
   }
 
   void resetFilter() {
-    state = const TransactionFilter();
+    state = const TransactionFilter(
+      isBankTransaction: false,
+      types: {},
+      categories: {},
+      sortBy: SortBy.newest,
+    );
   }
 }
 
-final transactionFilterProvider = StateNotifierProvider<TransactionFilterNotifier, TransactionFilter>((ref) {
+final transactionFilterProvider =
+    StateNotifierProvider<TransactionFilterNotifier, TransactionFilter>((ref) {
   return TransactionFilterNotifier();
-}); 
+});

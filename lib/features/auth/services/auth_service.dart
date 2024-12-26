@@ -15,12 +15,17 @@ import '../providers/user_provider.dart';
 import '../providers/security_preferences_provider.dart';
 import '../../transactions/providers/transactions_provider.dart';
 import '../../budget/providers/budget_provider.dart';
+import 'dart:async';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn(
-    scopes: ['email', 'profile'],
+    scopes: [
+      'email',
+      'profile',
+    ],
+    signInOption: SignInOption.standard,
   );
   final Ref ref;
 
@@ -76,7 +81,7 @@ class AuthService {
     try {
       final isValid = await OTPService.verifyOTP(email, otp);
       if (!isValid) {
-        throw 'Invalid verification code';
+        throw 'Invalid or expired OTP';
       }
 
       // If OTP is valid, sign in the user
@@ -90,8 +95,7 @@ class AuthService {
 
       return userCredential;
     } catch (e) {
-      debugPrint('Error verifying OTP: $e');
-      throw 'Failed to verify code. Please try again.';
+      throw e.toString();
     }
   }
 
@@ -120,16 +124,13 @@ class AuthService {
 
   // Google Sign In
   Future<UserCredential> signInWithGoogle(
-      {GoogleSignInAccount? googleAccount}) async {
+      {required GoogleSignInAccount? googleAccount}) async {
     try {
-      // Start the sign-in process if no account provided
-      googleAccount ??= await _googleSignIn.signIn();
-
       if (googleAccount == null) {
         throw 'Google Sign In was cancelled';
       }
 
-      // Get authentication details
+      // Get auth details - this is done in parallel
       final googleAuth = await googleAccount.authentication;
 
       // Create credential
@@ -141,8 +142,8 @@ class AuthService {
       // Sign in to Firebase
       final userCredential = await _auth.signInWithCredential(credential);
 
-      // Create/update user document
-      await _createOrUpdateUserDocument(userCredential.user!);
+      // Create/update user document in parallel with navigation
+      _createOrUpdateUserDocument(userCredential.user!);
 
       return userCredential;
     } catch (e) {
@@ -270,20 +271,24 @@ class AuthService {
     required String password,
     required String name,
   }) async {
+    Completer<String> completer = Completer<String>();
+
     try {
-      // Generate and send OTP
+      // Generate OTP
       final otp = OTPService.generateOTP();
-      await OTPService.saveOTP(email, otp);
 
-      // Send email with OTP
-      await EmailService.sendOTPEmail(email, otp);
+      // Save OTP and send email
+      await Future.wait([
+        OTPService.saveOTP(email, otp),
+        EmailService.sendOTPEmail(email, otp),
+      ]);
 
-      // Return the OTP as verificationId
-      return otp;
+      completer.complete(otp);
     } catch (e) {
-      debugPrint('Error sending OTP: $e');
-      throw 'Failed to send verification code. Please try again.';
+      completer.completeError(e);
     }
+
+    return completer.future;
   }
 }
 

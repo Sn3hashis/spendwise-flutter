@@ -7,51 +7,64 @@ enum SortBy {
   lowest,
 }
 
-class TransactionFilter {
-  final List<TransactionType> types;
-  final List<String> categories;
-  final SortBy sortBy;
+enum TransactionFilterType {
+  all,
+  income,
+  expense,
+  transfer,
+  bankExpense,
+}
 
-  static const List<TransactionType> _emptyTypes = [];
-  static const List<String> _emptyCategories = [];
+class TransactionFilter {
+  final Set<TransactionType> types;
+  final Set<String> categories;
+  final SortBy sortBy;
+  final bool isBankTransaction;
 
   const TransactionFilter({
-    this.types = _emptyTypes,
-    this.categories = _emptyCategories,
+    this.types = const {},
+    this.categories = const {},
     this.sortBy = SortBy.newest,
+    this.isBankTransaction = false,
   });
 
   TransactionFilter copyWith({
-    List<TransactionType>? types,
-    List<String>? categories,
+    Set<TransactionType>? types,
+    Set<String>? categories,
     SortBy? sortBy,
+    bool? isBankTransaction,
   }) {
     return TransactionFilter(
-      types: types ?? List<TransactionType>.from(this.types),
-      categories: categories ?? List<String>.from(this.categories),
+      types: types ?? Set<TransactionType>.from(this.types),
+      categories: categories ?? Set<String>.from(this.categories),
       sortBy: sortBy ?? this.sortBy,
+      isBankTransaction: isBankTransaction ?? this.isBankTransaction,
     );
   }
 
   factory TransactionFilter.fromJson(Map<String, dynamic> json) {
     return TransactionFilter(
-      types: (json['types'] as List?)?.map((e) => 
-        TransactionType.values.firstWhere(
-          (type) => type.toString() == e,
-          orElse: () => TransactionType.expense,
-        )
-      ).toList() ?? _emptyTypes,
-      categories: (json['categories'] as List?)?.cast<String>().toList() ?? _emptyCategories,
+      types: (json['types'] as List?)
+              ?.map((e) => TransactionType.values.firstWhere(
+                    (type) => type.toString() == e,
+                    orElse: () => TransactionType.expense,
+                  ))
+              .toSet() ??
+          Set<TransactionType>(),
+      categories: (json['categories'] as List?)?.cast<String>().toSet() ??
+          Set<String>(),
       sortBy: SortBy.values.firstWhere(
         (sort) => sort.toString() == json['sortBy'],
         orElse: () => SortBy.newest,
       ),
+      isBankTransaction: json['isBankTransaction'] ?? false,
     );
   }
 
   Map<String, dynamic> toJson() => {
-    'types': types.map((e) => e.toString()).toList(),
-    'categories': categories,
-    'sortBy': sortBy.toString(),
-  };
-} 
+        'types': types.map((e) => e.toString()).toList(),
+        'categories': categories.toList(),
+        'sortBy': sortBy.toString(),
+        'isBankTransaction': isBankTransaction,
+      };
+}

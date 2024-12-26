@@ -15,160 +15,156 @@ class TransactionsNotifier extends StateNotifier<List<Transaction>> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final Ref ref;
   final Set<String> _deletedIds = {};
-  
+  bool _isInitialized = false;
+
   TransactionsNotifier(this.ref) : super([]) {
     debugPrint('[TransactionsNotifier] Initializing...');
-    _loadFromLocal();
-    
-    // Listen to currency changes
-    ref.listen<Currency>(currencyProvider, (previous, next) {
-      if (previous?.code != next.code) {
-        debugPrint('[TransactionsNotifier] Currency changed, reloading transactions...');
-        _loadFromLocal();
-      }
-    });
+    _initialize();
+  }
+
+  Future<void> _initialize() async {
+    if (_isInitialized) return;
+    await _loadDeletedIds();
+    await loadTransactions();
+    _isInitialized = true;
+  }
+
+  Future<void> loadTransactions() async {
+    try {
+      debugPrint('[TransactionsNotifier] Loading transactions...');
+      await _loadFromLocal();
+      await _syncWithFirebase();
+    } catch (e) {
+      debugPrint('[TransactionsNotifier] Error loading transactions: $e');
+    }
   }
 
   Future<void> _loadFromLocal() async {
     try {
-      debugPrint('[TransactionsNotifier] Loading transactions from local storage...');
+      debugPrint('[TransactionsNotifier] Loading from local storage...');
       final prefs = await SharedPreferences.getInstance();
       final transactionsJson = prefs.getStringList('transactions') ?? [];
-      
-      state = transactionsJson
-          .map((json) => Transaction.fromJson(jsonDecode(json)))
-          .toList();
-      
-      debugPrint('[TransactionsNotifier] Loaded ${state.length} transactions from local storage');
-      
-      // After loading from local, try to sync with Firebase
-      _syncWithFirebase();
-    } catch (e) {
-      debugPrint('[TransactionsNotifier] Error loading transactions from local: $e');
-    }
-  }
 
-  Future<void> _saveToLocal() async {
-    try {
-      debugPrint('[TransactionsNotifier] Saving transactions to local storage...');
-      final prefs = await SharedPreferences.getInstance();
-      final transactionsJson = state
-          .map((transaction) => jsonEncode(transaction.toJson()))
+      if (transactionsJson.isEmpty) {
+        debugPrint('[TransactionsNotifier] No local transactions found');
+        return;
+      }
+
+      final loadedTransactions = transactionsJson
+          .map((json) => Transaction.fromJson(jsonDecode(json)))
+          .where((transaction) => !_deletedIds.contains(transaction.id))
           .toList();
-      
-      await prefs.setStringList('transactions', transactionsJson);
-      debugPrint('[TransactionsNotifier] Saved ${state.length} transactions to local storage');
+
+      state = loadedTransactions;
+      debugPrint(
+          '[TransactionsNotifier] Loaded ${state.length} local transactions');
     } catch (e) {
-      debugPrint('[TransactionsNotifier] Error saving transactions to local: $e');
+      debugPrint('[TransactionsNotifier] Error loading from local: $e');
     }
   }
 
   Future<void> _syncWithFirebase() async {
     try {
-      debugPrint('[TransactionsNotifier] Starting Firebase sync...');
       final user = _auth.currentUser;
       if (user == null) {
-        debugPrint('[TransactionsNotifier] No user logged in, skipping Firebase sync');
+        debugPrint('[TransactionsNotifier] No user logged in');
         return;
       }
 
-      // Load deleted IDs before sync
-      await _loadDeletedIds();
+      debugPrint('[TransactionsNotifier] Starting Firebase sync...');
 
-      // First, try to get any newer data from Firebase
       final snapshot = await _firestore
           .collection('users')
           .doc(user.uid)
           .collection('transactions')
-          .orderBy('updatedAt', descending: true)
           .get();
 
-      debugPrint('[TransactionsNotifier] Found ${snapshot.docs.length} transactions in Firebase');
+      final firebaseTransactions = <Transaction>[];
 
-      // Create a map of local transactions by ID
-      final localTransactions = Map.fromEntries(
-        state.map((t) => MapEntry(t.id, t))
-      );
-
-      // Process Firebase transactions
       for (var doc in snapshot.docs) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        final firebaseTransaction = Transaction.fromJson(data);
-        
-        // If transaction exists locally, keep the newer one based on updatedAt
-        if (localTransactions.containsKey(firebaseTransaction.id)) {
-          final localTransaction = localTransactions[firebaseTransaction.id]!;
-          if (data['updatedAt'] != null && 
-              (data['updatedAt'] as Timestamp).toDate().isAfter(localTransaction.updatedAt)) {
-            localTransactions[firebaseTransaction.id] = firebaseTransaction;
+        try {
+          if (!_deletedIds.contains(doc.id)) {
+            final data = doc.data();
+            data['id'] = doc.id; // Ensure ID is included
+            final transaction = Transaction.fromJson(data);
+            firebaseTransactions.add(transaction);
           }
-        } else {
-          // If it doesn't exist locally, add it
-          localTransactions[firebaseTransaction.id] = firebaseTransaction;
+        } catch (e) {
+          debugPrint(
+              '[TransactionsNotifier] Error parsing transaction ${doc.id}: $e');
+          continue;
         }
       }
 
-      // Update state with merged transactions
-      state = localTransactions.values
-          .where((transaction) => !_deletedIds.contains(transaction.id)) // Filter out deleted transactions
-          .toList()
+      debugPrint(
+          '[TransactionsNotifier] Found ${firebaseTransactions.length} Firebase transactions');
+
+      // Create a map of transactions by ID for easier merging
+      final transactionMap = {
+        for (var t in [...state, ...firebaseTransactions]) t.id: t
+      };
+
+      state = transactionMap.values.toList()
         ..sort((a, b) => b.date.compareTo(a.date));
 
-      // Save merged state to local storage
       await _saveToLocal();
-
-      // Now push our changes back to Firebase
-      final batch = _firestore.batch();
-      final transactionsRef = _firestore
-          .collection('users')
-          .doc(user.uid)
-          .collection('transactions');
-
-      for (var transaction in state) {
-        final docRef = transactionsRef.doc(transaction.id);
-        final data = {
-          ...transaction.toJson(),
-          'updatedAt': FieldValue.serverTimestamp(),
-        };
-        batch.set(docRef, data, SetOptions(merge: true));
-      }
-
-      await batch.commit();
-      debugPrint('[TransactionsNotifier] Successfully completed Firebase sync');
-    } catch (e) {
-      debugPrint('[TransactionsNotifier] Error during Firebase sync: $e');
+      debugPrint(
+          '[TransactionsNotifier] Sync complete. Total transactions: ${state.length}');
+    } catch (e, stackTrace) {
+      debugPrint('[TransactionsNotifier] Firebase sync error: $e');
+      debugPrint(stackTrace.toString());
     }
   }
 
-  Future<void> loadTransactions() async {
-    await _loadFromLocal();
+  Future<void> addTransaction(Transaction transaction) async {
+    try {
+      state = [...state, transaction];
+      await _saveToLocal();
+
+      final user = _auth.currentUser;
+      if (user != null) {
+        await _firestore
+            .collection('users')
+            .doc(user.uid)
+            .collection('transactions')
+            .doc(transaction.id)
+            .set(transaction.toJson());
+      }
+    } catch (e) {
+      debugPrint('[TransactionsNotifier] Error adding transaction: $e');
+    }
   }
 
-  Future<void> addTransaction(Transaction transaction) async {
-    debugPrint('[TransactionsNotifier] Adding new transaction...');
-    state = [...state, transaction];
-    
-    // First save locally
-    await _saveToLocal();
-    
-    // Then try to sync with Firebase in the background
-    _syncWithFirebase();
+  Future<void> _saveToLocal() async {
+    try {
+      debugPrint('[TransactionsNotifier] Saving to local storage...');
+      final prefs = await SharedPreferences.getInstance();
+
+      final transactionsJson =
+          state.map((transaction) => jsonEncode(transaction.toJson())).toList();
+
+      await prefs.setStringList('transactions', transactionsJson);
+      debugPrint(
+          '[TransactionsNotifier] Saved ${state.length} transactions locally');
+    } catch (e) {
+      debugPrint('[TransactionsNotifier] Error saving to local: $e');
+    }
   }
 
   Future<void> updateTransaction(Transaction updatedTransaction) async {
-    debugPrint('[TransactionsNotifier] Updating transaction ${updatedTransaction.id}...');
+    debugPrint(
+        '[TransactionsNotifier] Updating transaction ${updatedTransaction.id}...');
     final updatedTransactions = state.map((transaction) {
       return transaction.id == updatedTransaction.id
           ? updatedTransaction
           : transaction;
     }).toList();
-    
+
     state = updatedTransactions;
-    
+
     // First save locally
     await _saveToLocal();
-    
+
     // Then try to sync with Firebase in the background
     _syncWithFirebase();
   }
@@ -219,7 +215,7 @@ class TransactionsNotifier extends StateNotifier<List<Transaction>> {
     String? note,
   }) {
     final currentCurrency = ref.read(currencyProvider).code;
-    
+
     return Transaction(
       id: DateTime.now().toString(),
       amount: amount,
@@ -230,12 +226,14 @@ class TransactionsNotifier extends StateNotifier<List<Transaction>> {
       currencyCode: currentCurrency,
       type: amount < 0 ? TransactionType.expense : TransactionType.income,
       attachments: const [],
+      updatedAt: DateTime.now(),
     );
   }
 
   Future<void> syncWithFirebase() => _syncWithFirebase();
 }
 
-final transactionsProvider = StateNotifierProvider<TransactionsNotifier, List<Transaction>>((ref) {
+final transactionsProvider =
+    StateNotifierProvider<TransactionsNotifier, List<Transaction>>((ref) {
   return TransactionsNotifier(ref);
 });

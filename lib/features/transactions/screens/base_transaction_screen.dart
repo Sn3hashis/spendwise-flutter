@@ -38,16 +38,15 @@ class AttachmentPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isImage = filePath.toLowerCase().endsWith('.jpg') || 
-                   filePath.toLowerCase().endsWith('.jpeg') || 
-                   filePath.toLowerCase().endsWith('.png');
+    final isImage = filePath.toLowerCase().endsWith('.jpg') ||
+        filePath.toLowerCase().endsWith('.jpeg') ||
+        filePath.toLowerCase().endsWith('.png');
 
     // Get file name from path
     final fileName = filePath.split('/').last;
     // Truncate file name if too long
-    final displayName = fileName.length > 10 
-        ? '${fileName.substring(0, 7)}...' 
-        : fileName;
+    final displayName =
+        fileName.length > 10 ? '${fileName.substring(0, 7)}...' : fileName;
 
     return Container(
       width: 100,
@@ -56,16 +55,14 @@ class AttachmentPreview extends StatelessWidget {
         color: isDarkMode ? AppTheme.cardDark : AppTheme.cardLight,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isDarkMode 
-              ? const Color(0xFF2C2C2E) 
-              : const Color(0xFFE5E5EA),
+          color: isDarkMode ? const Color(0xFF2C2C2E) : const Color(0xFFE5E5EA),
         ),
       ),
       child: Stack(
         children: [
           // Image or PDF preview with filename
           Center(
-            child: isImage 
+            child: isImage
                 ? ClipRRect(
                     borderRadius: BorderRadius.circular(8),
                     child: Image.file(
@@ -88,8 +85,8 @@ class AttachmentPreview extends StatelessWidget {
                         displayName,
                         style: TextStyle(
                           fontSize: 12,
-                          color: isDarkMode 
-                              ? CupertinoColors.white 
+                          color: isDarkMode
+                              ? CupertinoColors.white
                               : CupertinoColors.black,
                         ),
                         maxLines: 1,
@@ -107,16 +104,16 @@ class AttachmentPreview extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                  color: isDarkMode 
-                      ? Colors.black.withOpacity(0.6) 
+                  color: isDarkMode
+                      ? Colors.black.withOpacity(0.6)
                       : Colors.white.withOpacity(0.8),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   CupertinoIcons.xmark_circle_fill,
                   size: 20,
-                  color: isDarkMode 
-                      ? CupertinoColors.white 
+                  color: isDarkMode
+                      ? CupertinoColors.white
                       : CupertinoColors.black,
                 ),
               ),
@@ -139,7 +136,8 @@ class BaseTransactionScreen extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<BaseTransactionScreen> createState() => _BaseTransactionScreenState();
+  ConsumerState<BaseTransactionScreen> createState() =>
+      _BaseTransactionScreenState();
 }
 
 class _BaseTransactionScreenState extends ConsumerState<BaseTransactionScreen> {
@@ -170,9 +168,10 @@ class _BaseTransactionScreenState extends ConsumerState<BaseTransactionScreen> {
       _selectedCategory = widget.transaction!.category;
       _attachments = List.from(widget.transaction!.attachments);
       _isRepeat = widget.transaction!.isRepeat;
-      _repeatFrequency = widget.transaction!.repeatFrequency ?? RepeatFrequency.monthly;
+      _repeatFrequency =
+          widget.transaction!.repeatFrequency ?? RepeatFrequency.monthly;
       _repeatEndDate = widget.transaction!.repeatEndDate;
-      
+
       if (widget.transaction!.payeeId != null) {
         final payees = ref.read(payeesProvider);
         try {
@@ -196,9 +195,9 @@ class _BaseTransactionScreenState extends ConsumerState<BaseTransactionScreen> {
 
   void _validateInputs() {
     setState(() {
-      _isValid = _amountController.text.isNotEmpty && 
-                 double.tryParse(_amountController.text) != null &&
-                 double.parse(_amountController.text) > 0;
+      _isValid = _amountController.text.isNotEmpty &&
+          double.tryParse(_amountController.text) != null &&
+          double.parse(_amountController.text) > 0;
     });
   }
 
@@ -241,18 +240,20 @@ class _BaseTransactionScreenState extends ConsumerState<BaseTransactionScreen> {
 
     final amount = double.parse(_amountController.text);
     final now = DateTime.now();
-    
+
     final budget = _findMatchingBudget();
     final transaction = Transaction(
-      id: const Uuid().v4(),
+      id: widget.transaction?.id ?? const Uuid().v4(),
+      amount:
+          widget.type == TransactionType.expense ? -amount.abs() : amount.abs(),
       description: _descriptionController.text,
-      amount: widget.type == TransactionType.expense ? -amount.abs() : amount.abs(),
       date: now,
       category: _selectedCategory!,
       budgetId: budget?.id,
       type: widget.type,
       attachments: _attachments,
       currencyCode: ref.read(settingsProvider).currency,
+      updatedAt: DateTime.now(),
       isRepeat: _isRepeat,
       repeatFrequency: _isRepeat ? _repeatFrequency : null,
       repeatEndDate: _isRepeat ? _repeatEndDate : null,
@@ -289,21 +290,24 @@ class _BaseTransactionScreenState extends ConsumerState<BaseTransactionScreen> {
             color: isDarkMode ? AppTheme.cardDark : AppTheme.cardLight,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: isDarkMode 
-                  ? const Color(0xFF2C2C2E) 
+              color: isDarkMode
+                  ? const Color(0xFF2C2C2E)
                   : const Color(0xFFE5E5EA),
             ),
           ),
           child: CupertinoButton(
             padding: const EdgeInsets.all(16),
-            onPressed: widget.transaction != null 
-                ? () => _showTemporaryMessage() 
+            onPressed: widget.transaction != null
+                ? () => _showTemporaryMessage()
                 : () async {
-                    final categories = ref.read(categoriesProvider).where(
-                      (cat) => cat.type == (widget.type == TransactionType.income 
-                          ? CategoryType.income 
-                          : CategoryType.expense)
-                    ).toList();
+                    final categories = ref
+                        .read(categoriesProvider)
+                        .where((cat) =>
+                            cat.type ==
+                            (widget.type == TransactionType.income
+                                ? CategoryType.income
+                                : CategoryType.expense))
+                        .toList();
 
                     await showCupertinoModalPopup(
                       context: context,
@@ -342,12 +346,12 @@ class _BaseTransactionScreenState extends ConsumerState<BaseTransactionScreen> {
                     _selectedCategory!.name,
                     style: TextStyle(
                       fontSize: 17,
-                      color: widget.transaction != null 
-                          ? (isDarkMode 
-                              ? CupertinoColors.white.withOpacity(0.6) 
+                      color: widget.transaction != null
+                          ? (isDarkMode
+                              ? CupertinoColors.white.withOpacity(0.6)
                               : CupertinoColors.black.withOpacity(0.6))
-                          : (isDarkMode 
-                              ? CupertinoColors.white 
+                          : (isDarkMode
+                              ? CupertinoColors.white
                               : CupertinoColors.black),
                     ),
                   ),
@@ -356,17 +360,17 @@ class _BaseTransactionScreenState extends ConsumerState<BaseTransactionScreen> {
                     'Select Category',
                     style: TextStyle(
                       fontSize: 17,
-                      color: isDarkMode 
-                          ? CupertinoColors.systemGrey 
+                      color: isDarkMode
+                          ? CupertinoColors.systemGrey
                           : CupertinoColors.systemGrey2,
                     ),
                   ),
                 const Spacer(),
-                if (widget.transaction == null) 
+                if (widget.transaction == null)
                   Icon(
                     CupertinoIcons.chevron_right,
-                    color: isDarkMode 
-                        ? CupertinoColors.systemGrey 
+                    color: isDarkMode
+                        ? CupertinoColors.systemGrey
                         : CupertinoColors.systemGrey2,
                     size: 20,
                   ),
@@ -399,13 +403,11 @@ class _BaseTransactionScreenState extends ConsumerState<BaseTransactionScreen> {
         placeholder: 'Description',
         decoration: null,
         style: TextStyle(
-          color: isDarkMode 
-              ? CupertinoColors.white 
-              : CupertinoColors.black,
+          color: isDarkMode ? CupertinoColors.white : CupertinoColors.black,
         ),
         placeholderStyle: TextStyle(
-          color: isDarkMode 
-              ? CupertinoColors.systemGrey 
+          color: isDarkMode
+              ? CupertinoColors.systemGrey
               : CupertinoColors.systemGrey2,
         ),
       ),
@@ -429,17 +431,16 @@ class _BaseTransactionScreenState extends ConsumerState<BaseTransactionScreen> {
               'Wallet',
               style: TextStyle(
                 fontSize: 17,
-                color: isDarkMode 
-                    ? CupertinoColors.white 
-                    : CupertinoColors.black,
+                color:
+                    isDarkMode ? CupertinoColors.white : CupertinoColors.black,
               ),
             ),
             const Spacer(),
             Icon(
               CupertinoIcons.chevron_down,
               size: 16,
-              color: isDarkMode 
-                  ? CupertinoColors.systemGrey 
+              color: isDarkMode
+                  ? CupertinoColors.systemGrey
                   : CupertinoColors.systemGrey2,
             ),
           ],
@@ -454,16 +455,14 @@ class _BaseTransactionScreenState extends ConsumerState<BaseTransactionScreen> {
         color: isDarkMode ? AppTheme.cardDark : AppTheme.cardLight,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isDarkMode 
-              ? const Color(0xFF2C2C2E) 
-              : const Color(0xFFE5E5EA),
+          color: isDarkMode ? const Color(0xFF2C2C2E) : const Color(0xFFE5E5EA),
         ),
       ),
       child: CupertinoButton(
         padding: const EdgeInsets.all(16),
         onPressed: () async {
           final payees = ref.read(payeesProvider);
-          
+
           await showCupertinoModalPopup(
             context: context,
             useRootNavigator: true,
@@ -505,8 +504,8 @@ class _BaseTransactionScreenState extends ConsumerState<BaseTransactionScreen> {
                 height: 40,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: isDarkMode 
-                      ? CupertinoColors.systemGrey6.darkColor 
+                  color: isDarkMode
+                      ? CupertinoColors.systemGrey6.darkColor
                       : CupertinoColors.systemGrey6,
                 ),
                 child: Center(
@@ -524,8 +523,8 @@ class _BaseTransactionScreenState extends ConsumerState<BaseTransactionScreen> {
                 _selectedPayee!.name,
                 style: TextStyle(
                   fontSize: 17,
-                  color: isDarkMode 
-                      ? CupertinoColors.white 
+                  color: isDarkMode
+                      ? CupertinoColors.white
                       : CupertinoColors.black,
                 ),
               ),
@@ -534,16 +533,16 @@ class _BaseTransactionScreenState extends ConsumerState<BaseTransactionScreen> {
                 'Select Payee',
                 style: TextStyle(
                   fontSize: 17,
-                  color: isDarkMode 
-                      ? CupertinoColors.systemGrey 
+                  color: isDarkMode
+                      ? CupertinoColors.systemGrey
                       : CupertinoColors.systemGrey2,
                 ),
               ),
             const Spacer(),
             Icon(
               CupertinoIcons.chevron_right,
-              color: isDarkMode 
-                  ? CupertinoColors.systemGrey 
+              color: isDarkMode
+                  ? CupertinoColors.systemGrey
                   : CupertinoColors.systemGrey2,
               size: 20,
             ),
@@ -558,9 +557,7 @@ class _BaseTransactionScreenState extends ConsumerState<BaseTransactionScreen> {
       color: isDarkMode ? AppTheme.cardDark : AppTheme.cardLight,
       borderRadius: BorderRadius.circular(12),
       border: Border.all(
-        color: isDarkMode 
-            ? const Color(0xFF2C2C2E) 
-            : const Color(0xFFE5E5EA),
+        color: isDarkMode ? const Color(0xFF2C2C2E) : const Color(0xFFE5E5EA),
       ),
     );
   }
@@ -571,9 +568,7 @@ class _BaseTransactionScreenState extends ConsumerState<BaseTransactionScreen> {
         color: isDarkMode ? AppTheme.cardDark : AppTheme.cardLight,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isDarkMode 
-              ? const Color(0xFF2C2C2E) 
-              : const Color(0xFFE5E5EA),
+          color: isDarkMode ? const Color(0xFF2C2C2E) : const Color(0xFFE5E5EA),
         ),
       ),
       child: _attachments.isEmpty
@@ -596,8 +591,8 @@ class _BaseTransactionScreenState extends ConsumerState<BaseTransactionScreen> {
                 children: [
                   Icon(
                     CupertinoIcons.paperclip,
-                    color: isDarkMode 
-                        ? CupertinoColors.white 
+                    color: isDarkMode
+                        ? CupertinoColors.white
                         : CupertinoColors.black,
                   ),
                   const SizedBox(width: 8),
@@ -605,8 +600,8 @@ class _BaseTransactionScreenState extends ConsumerState<BaseTransactionScreen> {
                     'Add attachment',
                     style: TextStyle(
                       fontSize: 17,
-                      color: isDarkMode 
-                          ? CupertinoColors.white 
+                      color: isDarkMode
+                          ? CupertinoColors.white
                           : CupertinoColors.black,
                     ),
                   ),
@@ -648,13 +643,13 @@ class _BaseTransactionScreenState extends ConsumerState<BaseTransactionScreen> {
                               width: 100,
                               height: 100,
                               decoration: BoxDecoration(
-                                color: isDarkMode 
-                                    ? AppTheme.cardDark 
+                                color: isDarkMode
+                                    ? AppTheme.cardDark
                                     : AppTheme.cardLight,
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
-                                  color: isDarkMode 
-                                      ? const Color(0xFF2C2C2E) 
+                                  color: isDarkMode
+                                      ? const Color(0xFF2C2C2E)
                                       : const Color(0xFFE5E5EA),
                                 ),
                               ),
@@ -662,8 +657,8 @@ class _BaseTransactionScreenState extends ConsumerState<BaseTransactionScreen> {
                                 child: Icon(
                                   CupertinoIcons.add_circled,
                                   size: 30,
-                                  color: isDarkMode 
-                                      ? CupertinoColors.white 
+                                  color: isDarkMode
+                                      ? CupertinoColors.white
                                       : CupertinoColors.black,
                                 ),
                               ),
@@ -685,9 +680,7 @@ class _BaseTransactionScreenState extends ConsumerState<BaseTransactionScreen> {
         color: isDarkMode ? AppTheme.cardDark : AppTheme.cardLight,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isDarkMode 
-              ? const Color(0xFF2C2C2E) 
-              : const Color(0xFFE5E5EA),
+          color: isDarkMode ? const Color(0xFF2C2C2E) : const Color(0xFFE5E5EA),
         ),
       ),
       padding: const EdgeInsets.symmetric(
@@ -705,19 +698,19 @@ class _BaseTransactionScreenState extends ConsumerState<BaseTransactionScreen> {
                     'Repeat',
                     style: TextStyle(
                       fontSize: 17,
-                      color: isDarkMode 
-                          ? CupertinoColors.white 
+                      color: isDarkMode
+                          ? CupertinoColors.white
                           : CupertinoColors.black,
                     ),
                   ),
                   Text(
-                    _isRepeat 
+                    _isRepeat
                         ? '${_repeatFrequency.name.substring(0, 1).toUpperCase()}${_repeatFrequency.name.substring(1)} until ${_repeatEndDate?.toString().split(' ')[0] ?? 'No end date'}'
                         : 'Repeat transaction',
                     style: TextStyle(
                       fontSize: 13,
-                      color: isDarkMode 
-                          ? CupertinoColors.systemGrey 
+                      color: isDarkMode
+                          ? CupertinoColors.systemGrey
                           : CupertinoColors.systemGrey2,
                     ),
                   ),
@@ -834,15 +827,19 @@ class _BaseTransactionScreenState extends ConsumerState<BaseTransactionScreen> {
                     color: CupertinoColors.white.withOpacity(0.5),
                     fontWeight: FontWeight.bold,
                   ),
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
                   inputFormatters: [
-                    FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+                    FilteringTextInputFormatter.allow(
+                        RegExp(r'^\d*\.?\d{0,2}')),
                     TextInputFormatter.withFunction((oldValue, newValue) {
                       try {
                         final text = newValue.text;
                         if (text.isEmpty) return newValue;
                         final number = double.parse(text);
-                        final isValid = text.contains('.') ? text.split('.')[1].length <= 2 : true;
+                        final isValid = text.contains('.')
+                            ? text.split('.')[1].length <= 2
+                            : true;
                         if (isValid) return newValue;
                       } catch (e) {}
                       return oldValue;
@@ -901,7 +898,8 @@ class _BaseTransactionScreenState extends ConsumerState<BaseTransactionScreen> {
         padding: const EdgeInsets.symmetric(vertical: 16),
         borderRadius: BorderRadius.circular(30),
         color: themeColor,
-        onPressed: _isValid && _selectedCategory != null ? _saveTransaction : null,
+        onPressed:
+            _isValid && _selectedCategory != null ? _saveTransaction : null,
         child: const Center(
           child: Text(
             'Save',
@@ -918,7 +916,7 @@ class _BaseTransactionScreenState extends ConsumerState<BaseTransactionScreen> {
 
   Budget? _findMatchingBudget() {
     if (_selectedCategory == null) return null;
-    
+
     final budgets = ref.read(budgetProvider);
     try {
       return budgets.firstWhere(
@@ -957,4 +955,4 @@ class _BaseTransactionScreenState extends ConsumerState<BaseTransactionScreen> {
       ),
     );
   }
-} 
+}

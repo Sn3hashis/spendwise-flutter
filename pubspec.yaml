@@ -51,6 +51,7 @@ dependencies:
   syncfusion_flutter_pdfviewer: ^24.2.8
   syncfusion_flutter_pdf: ^24.2.9
   open_file: ^3.3.2
+  open_file_macos: ^0.0.1
   uuid: ^4.1.0
   firebase_core: ^2.25.4
   firebase_auth: ^4.17.4
@@ -58,6 +59,11 @@ dependencies:
   google_sign_in: ^6.2.1
   mailer: ^6.1.0
   local_auth: ^2.3.0 
+  flutter_sms_inbox: ^1.0.3
+  permission_handler: ^10.4.5
+  sqflite: ^2.3.2
+  path: ^1.8.3
+  modal_bottom_sheet: ^3.0.0-pre
   
 dev_dependencies:
   flutter_test:
