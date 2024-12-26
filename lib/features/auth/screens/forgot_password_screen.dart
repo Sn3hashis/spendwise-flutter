@@ -6,12 +6,14 @@ import '../../../core/widgets/system_ui_wrapper.dart';
 import '../../../core/widgets/exit_dialog.dart';
 import 'email_sent_screen.dart';
 import '../services/auth_service.dart';
+import '../providers/auth_provider.dart';
 
 class ForgotPasswordScreen extends ConsumerStatefulWidget {
   const ForgotPasswordScreen({super.key});
 
   @override
-  ConsumerState<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
+  ConsumerState<ForgotPasswordScreen> createState() =>
+      _ForgotPasswordScreenState();
 }
 
 class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
@@ -33,7 +35,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     return shouldPop ?? false;
   }
 
-  void _handleResetPassword() async {
+  Future<void> _handleResetPassword() async {
     if (_emailController.text.isEmpty) {
       setState(() {
         _errorMessage = 'Please enter your email';
@@ -49,7 +51,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     try {
       final authService = ref.read(authServiceProvider);
       await authService.sendPasswordResetEmail(_emailController.text.trim());
-      
+
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
         CupertinoPageRoute(
@@ -224,12 +226,16 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                                 SizedBox(
                                   width: double.infinity,
                                   child: CupertinoButton.filled(
-                                    onPressed: _isLoading ? null : _handleResetPassword,
+                                    onPressed: _isLoading
+                                        ? null
+                                        : _handleResetPassword,
                                     borderRadius: BorderRadius.circular(12),
                                     child: _isLoading
-                                        ? const CupertinoActivityIndicator(color: CupertinoColors.white)
+                                        ? const CupertinoActivityIndicator(
+                                            color: CupertinoColors.white)
                                         : const Padding(
-                                            padding: EdgeInsets.symmetric(vertical: 4),
+                                            padding: EdgeInsets.symmetric(
+                                                vertical: 4),
                                             child: Text(
                                               'Continue',
                                               style: TextStyle(

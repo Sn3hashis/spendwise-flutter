@@ -20,11 +20,7 @@ class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn(
-    scopes: [
-      'email',
-      'profile',
-    ],
-    signInOption: SignInOption.standard,
+    scopes: ['email', 'profile'],
   );
   final Ref ref;
 
@@ -54,7 +50,7 @@ class AuthService {
 
       // Generate OTP
       final otp = OTPService.generateOTP();
-      
+
       // Save OTP and send email in parallel
       await Future.wait([
         OTPService.saveOTP(email, otp),
@@ -122,15 +118,19 @@ class AuthService {
   }
 
   // Google Sign In
-  Future<UserCredential> signInWithGoogle({required GoogleSignInAccount? googleAccount}) async {
+  Future<UserCredential> signInWithGoogle(
+      {GoogleSignInAccount? googleAccount}) async {
     try {
+      // Start the sign-in process if no account provided
+      googleAccount ??= await _googleSignIn.signIn();
+
       if (googleAccount == null) {
         throw 'Google Sign In was cancelled';
       }
 
-      // Get auth details - this is done in parallel
+      // Get authentication details
       final googleAuth = await googleAccount.authentication;
-      
+
       // Create credential
       final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
@@ -139,10 +139,10 @@ class AuthService {
 
       // Sign in to Firebase
       final userCredential = await _auth.signInWithCredential(credential);
-      
-      // Create/update user document in parallel with navigation
-      _createOrUpdateUserDocument(userCredential.user!);
-      
+
+      // Create/update user document
+      await _createOrUpdateUserDocument(userCredential.user!);
+
       return userCredential;
     } catch (e) {
       debugPrint('Error in signInWithGoogle: $e');
@@ -153,7 +153,7 @@ class AuthService {
   Future<void> _createOrUpdateUserDocument(User user) async {
     try {
       final userDoc = _firestore.collection('users').doc(user.uid);
-      
+
       // Use set with merge to avoid unnecessary writes
       await userDoc.set({
         'email': user.email,
@@ -207,21 +207,23 @@ class AuthService {
       if (user != null) {
         // Clear PIN from local storage only
         await ref.read(pinProvider.notifier).clearLocalPin();
-        
+
         // Reset security preferences to PIN
-        await ref.read(securityPreferencesProvider.notifier).setSecurityMethod(SecurityMethod.pin);
+        await ref
+            .read(securityPreferencesProvider.notifier)
+            .setSecurityMethod(SecurityMethod.pin);
       }
-      
+
       // Clear onboarding status
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('has_completed_onboarding');
-      
+
       // Sign out from Google
       await _googleSignIn.signOut();
-      
+
       // Sign out from Firebase
       await _auth.signOut();
-      
+
       // Clear user state
       ref.read(userProvider.notifier).state = null;
     } catch (e) {
@@ -263,6 +265,8 @@ class AuthService {
   }
 }
 
+
 final authServiceProvider = Provider<AuthService>((ref) {
   return AuthService(ref);
 }); 
+

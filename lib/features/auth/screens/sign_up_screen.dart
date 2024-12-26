@@ -13,6 +13,7 @@ import 'pin_entry_screen.dart';
 import '../services/auth_service.dart';
 import '../../../core/services/toast_service.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import '../providers/auth_provider.dart';
 
 class SignUpScreen extends ConsumerStatefulWidget {
   const SignUpScreen({super.key});
@@ -43,7 +44,8 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
         case 'email':
           if (value?.isEmpty ?? true) {
             _emailError = 'Please enter your email';
-          } else if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value!)) {
+          } else if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
+              .hasMatch(value!)) {
             _emailError = 'Please enter a valid email';
           } else {
             _emailError = null;
@@ -79,7 +81,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
   }
 
   Future<void> _handleSignUp() async {
-    if (_emailController.text.isEmpty || 
+    if (_emailController.text.isEmpty ||
         _passwordController.text.isEmpty ||
         _nameController.text.isEmpty) {
       ToastService.showToast(context, 'Please fill in all fields');
@@ -100,12 +102,15 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
       // Show immediate feedback
       ToastService.showToast(context, 'Creating your account...');
 
+
+      final authService = ref.read(authServiceProvider);
+
       final userCredential = await authService.signUpWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text,
         name: _nameController.text.trim(),
       );
-      
+
       if (!mounted) return;
 
       // Navigate to OTP screen immediately after account creation
@@ -122,7 +127,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
 
       // Show success message
       ToastService.showToast(
-        context, 
+        context,
         'Account created! Please check your email for verification code.',
       );
     } catch (e) {
@@ -154,9 +159,9 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
       final userCredential = await authService.signInWithGoogle(
         googleAccount: googleAccount,
       );
-      
+
       if (!mounted) return;
-      
+
       if (userCredential.user != null) {
         Navigator.of(context).pushReplacement(
           CupertinoPageRoute(
@@ -488,12 +493,16 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                                   ),
                                   const SizedBox(height: 24),
                                   CupertinoButton.filled(
-                                    onPressed: (_isLoading || !_agreedToTerms) ? null : _handleSignUp,
+                                    onPressed: (_isLoading || !_agreedToTerms)
+                                        ? null
+                                        : _handleSignUp,
                                     borderRadius: BorderRadius.circular(12),
                                     child: _isLoading
-                                        ? const CupertinoActivityIndicator(color: CupertinoColors.white)
+                                        ? const CupertinoActivityIndicator(
+                                            color: CupertinoColors.white)
                                         : const Padding(
-                                            padding: EdgeInsets.symmetric(vertical: 4),
+                                            padding: EdgeInsets.symmetric(
+                                                vertical: 4),
                                             child: Text(
                                               'Sign Up',
                                               style: TextStyle(
@@ -532,7 +541,8 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                                   ),
                                   const SizedBox(height: 24),
                                   CupertinoButton(
-                                    onPressed: _isLoading ? null : _handleGoogleSignUp,
+                                    onPressed:
+                                        _isLoading ? null : _handleGoogleSignUp,
                                     color: isDarkMode
                                         ? CupertinoColors.black
                                         : CupertinoColors.white,
