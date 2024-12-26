@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lottie/lottie.dart';
 import '../../../core/widgets/system_ui_wrapper.dart';
 import 'pin_entry_screen.dart';
-import '../services/auth_service.dart';
 import '../providers/auth_provider.dart';
 
 class OtpVerificationScreen extends ConsumerStatefulWidget {
@@ -30,6 +29,7 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
   Timer? timer;
   bool _isLoading = false;
   String? _error;
+  String? verificationId; // Add this field
 
   static const int otpLength = 6;
   final double boxSize = 50;
@@ -38,6 +38,7 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
   void initState() {
     super.initState();
     startTimer();
+    _startVerification(); // Add this call
   }
 
   @override
@@ -85,6 +86,21 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
     }
   }
 
+  Future<void> _startVerification() async {
+    try {
+      final authService = ref.read(authServiceProvider);
+      verificationId = await authService.sendOTP(
+        email: widget.email,
+        password: widget.password,
+        name: widget.name,
+      );
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+      });
+    }
+  }
+
   Future<void> _verifyOtp() async {
     if (_isLoading) return;
 
@@ -97,13 +113,10 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
       final authService = ref.read(authServiceProvider);
 
       final userCredential = await authService.verifyOTP(
-
-      await authService.verifyOTP(
-
         email: widget.email,
-        otp: currentOtp,
         password: widget.password,
-        name: widget.name, // Pass the name
+        name: widget.name,
+        otp: currentOtp,
       );
 
       if (!mounted) return;

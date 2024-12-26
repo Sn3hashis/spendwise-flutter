@@ -76,7 +76,7 @@ class AuthService {
     try {
       final isValid = await OTPService.verifyOTP(email, otp);
       if (!isValid) {
-        throw 'Invalid or expired OTP';
+        throw 'Invalid verification code';
       }
 
       // If OTP is valid, sign in the user
@@ -90,7 +90,8 @@ class AuthService {
 
       return userCredential;
     } catch (e) {
-      throw e.toString();
+      debugPrint('Error verifying OTP: $e');
+      throw 'Failed to verify code. Please try again.';
     }
   }
 
@@ -104,13 +105,13 @@ class AuthService {
         email: email,
         password: password,
       );
-      
+
       // Create/update user document first
       await _createOrUpdateUserDocument(userCredential.user!);
-      
+
       // Then restore all data in parallel
       await _restoreUserData();
-      
+
       return userCredential;
     } on FirebaseAuthException catch (e) {
       throw _handleFirebaseAuthError(e);
@@ -263,10 +264,29 @@ class AuthService {
         return e.message ?? 'An error occurred during authentication';
     }
   }
-}
 
+  Future<String> sendOTP({
+    required String email,
+    required String password,
+    required String name,
+  }) async {
+    try {
+      // Generate and send OTP
+      final otp = OTPService.generateOTP();
+      await OTPService.saveOTP(email, otp);
+
+      // Send email with OTP
+      await EmailService.sendOTPEmail(email, otp);
+
+      // Return the OTP as verificationId
+      return otp;
+    } catch (e) {
+      debugPrint('Error sending OTP: $e');
+      throw 'Failed to send verification code. Please try again.';
+    }
+  }
+}
 
 final authServiceProvider = Provider<AuthService>((ref) {
   return AuthService(ref);
-}); 
-
+});

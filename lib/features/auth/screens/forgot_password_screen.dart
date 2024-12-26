@@ -5,7 +5,6 @@ import '../../../core/providers/theme_provider.dart';
 import '../../../core/widgets/system_ui_wrapper.dart';
 import '../../../core/widgets/exit_dialog.dart';
 import 'email_sent_screen.dart';
-import '../services/auth_service.dart';
 import '../providers/auth_provider.dart';
 
 class ForgotPasswordScreen extends ConsumerStatefulWidget {

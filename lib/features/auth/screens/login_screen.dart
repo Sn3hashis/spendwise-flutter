@@ -12,8 +12,6 @@ import '../../../core/providers/theme_provider.dart';
 import '../../../core/widgets/haptic_feedback_wrapper.dart';
 import '../../../core/services/haptic_service.dart';
 import 'package:flutter/services.dart';
-import '../services/auth_service.dart';
-import '../../../core/services/toast_service.dart';
 import '../providers/pin_provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../providers/security_preferences_provider.dart';
@@ -23,6 +21,7 @@ import '../../../features/auth/screens/biometric_auth_screen.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../../../core/theme/app_theme.dart';
 import '../providers/auth_provider.dart';
+import '../../../core/services/toast_service.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -60,9 +59,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       final authService = ref.read(authServiceProvider);
 
       final userCredential = await authService.signInWithEmailAndPassword(
-
-      await authService.signInWithEmailAndPassword(
-
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
@@ -130,7 +126,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (!mounted) return;
 
       if (googleAccount != null) {
-
         final authService = ref.read(authServiceProvider);
 
         final userCredential = await authService.signInWithGoogle(

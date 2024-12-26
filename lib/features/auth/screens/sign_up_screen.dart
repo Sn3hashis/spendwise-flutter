@@ -4,16 +4,15 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../../../core/widgets/system_ui_wrapper.dart';
 import '../../../core/widgets/exit_dialog.dart';
 import 'package:lottie/lottie.dart';
+import '../providers/auth_provider.dart';
 import 'otp_verification_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/theme_provider.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/widgets/haptic_feedback_wrapper.dart';
 import 'pin_entry_screen.dart';
-import '../services/auth_service.dart';
 import '../../../core/services/toast_service.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import '../providers/auth_provider.dart';
 
 class SignUpScreen extends ConsumerStatefulWidget {
   const SignUpScreen({super.key});
@@ -99,11 +98,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
 
     try {
       final authService = ref.read(authServiceProvider);
-      // Show immediate feedback
       ToastService.showToast(context, 'Creating your account...');
-
-
-      final authService = ref.read(authServiceProvider);
 
       final userCredential = await authService.signUpWithEmailAndPassword(
         email: _emailController.text.trim(),
