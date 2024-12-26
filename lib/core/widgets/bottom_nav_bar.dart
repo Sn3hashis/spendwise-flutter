@@ -1,3 +1,5 @@
+import 'package:flutter/cupertino.dart';
+
 class BottomNavBar extends ConsumerWidget {
   const BottomNavBar({super.key});
 
@@ -11,16 +13,16 @@ class BottomNavBar extends ConsumerWidget {
         color: isDarkMode ? AppTheme.cardDark : AppTheme.cardLight,
         border: Border(
           top: BorderSide(
-            color: isDarkMode 
-                ? const Color(0xFF2C2C2E) 
-                : const Color(0xFFE5E5EA),
+            color:
+                isDarkMode ? const Color(0xFF2C2C2E) : const Color(0xFFE5E5EA),
           ),
         ),
       ),
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),  // Increase vertical padding
+          padding: const EdgeInsets.symmetric(
+              vertical: 8), // Increase vertical padding
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
@@ -60,11 +62,11 @@ class BottomNavBar extends ConsumerWidget {
     required bool isDarkMode,
   }) {
     return CupertinoButton(
-      padding: EdgeInsets.zero,  // Remove default padding
-      minSize: 0,  // Remove minimum size constraint
+      padding: EdgeInsets.zero, // Remove default padding
+      minSize: 0, // Remove minimum size constraint
       child: Container(
-        width: 80,  // Increase width
-        height: 56,  // Increase height
+        width: 80, // Increase width
+        height: 56, // Increase height
         padding: const EdgeInsets.symmetric(vertical: 8),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -73,10 +75,10 @@ class BottomNavBar extends ConsumerWidget {
               icon,
               color: isSelected
                   ? CupertinoColors.systemPurple
-                  : (isDarkMode 
-                      ? CupertinoColors.systemGrey 
+                  : (isDarkMode
+                      ? CupertinoColors.systemGrey
                       : CupertinoColors.systemGrey2),
-              size: 24,  // Slightly increase icon size
+              size: 24, // Slightly increase icon size
             ),
             const SizedBox(height: 4),
             Text(
@@ -85,8 +87,8 @@ class BottomNavBar extends ConsumerWidget {
                 fontSize: 12,
                 color: isSelected
                     ? CupertinoColors.systemPurple
-                    : (isDarkMode 
-                        ? CupertinoColors.systemGrey 
+                    : (isDarkMode
+                        ? CupertinoColors.systemGrey
                         : CupertinoColors.systemGrey2),
               ),
             ),
@@ -101,4 +103,4 @@ class BottomNavBar extends ConsumerWidget {
     await HapticService.lightImpact(ref);
     ref.read(bottomNavProvider.notifier).state = index;
   }
-} 
+}

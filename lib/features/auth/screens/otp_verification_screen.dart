@@ -5,31 +5,32 @@ import 'package:lottie/lottie.dart';
 import '../../../core/widgets/system_ui_wrapper.dart';
 import 'pin_entry_screen.dart';
 import '../services/auth_service.dart';
+import '../providers/auth_provider.dart';
 
 class OtpVerificationScreen extends ConsumerStatefulWidget {
   final String email;
   final String password;
-  final String name;  // Add name parameter
+  final String name; // Add name parameter
 
   const OtpVerificationScreen({
     required this.email,
     required this.password,
-    required this.name,  // Add to constructor
+    required this.name, // Add to constructor
     super.key,
   });
 
   @override
-  ConsumerState<OtpVerificationScreen> createState() => _OtpVerificationScreenState();
+  ConsumerState<OtpVerificationScreen> createState() =>
+      _OtpVerificationScreenState();
 }
 
 class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
-  final AuthService _authService = AuthService();
   String currentOtp = '';
   int timeLeft = 299; // 5 minutes in seconds
   Timer? timer;
   bool _isLoading = false;
   String? _error;
-  
+
   static const int otpLength = 6;
   final double boxSize = 50;
 
@@ -93,11 +94,12 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
     });
 
     try {
-      await _authService.verifyOTP(
+      final authService = ref.read(authServiceProvider);
+      final userCredential = await authService.verifyOTP(
         email: widget.email,
         otp: currentOtp,
         password: widget.password,
-        name: widget.name,  // Pass the name
+        name: widget.name, // Pass the name
       );
 
       if (!mounted) return;

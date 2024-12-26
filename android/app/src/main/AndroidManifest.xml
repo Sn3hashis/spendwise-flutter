@@ -14,10 +14,6 @@
         android:icon="@mipmap/ic_launcher"
         android:enableOnBackInvokedCallback="true">
         
-        <meta-data
-            android:name="com.google.android.gms.version"
-            android:value="@integer/google_play_services_version" />
-            
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -29,12 +25,7 @@
             
             <meta-data
                 android:name="io.flutter.embedding.android.NormalTheme"
-                android:resource="@style/NormalTheme"
-            />
-            
-            <meta-data
-                android:name="io.flutter.plugins.googlesignin.GoogleSignInPlugin.ClientId"
-                android:value="228590481963-dmp4feqqon7s8nquqelfumiqfktio0gj.apps.googleusercontent.com"/>
+                android:resource="@style/NormalTheme" />
                 
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
@@ -42,6 +33,15 @@
             </intent-filter>
         </activity>
         
+        <!-- Google Sign In Configuration -->
+        <meta-data
+            android:name="com.google.android.gms.version"
+            android:value="@integer/google_play_services_version" />
+            
+        <meta-data
+            android:name="io.flutter.plugins.googlesignin.GoogleSignInPlugin.ClientId"
+            android:value="228590481963-a5294cik6r7klikjlet69nkscsbejlgp.apps.googleusercontent.com"/>
+            
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />

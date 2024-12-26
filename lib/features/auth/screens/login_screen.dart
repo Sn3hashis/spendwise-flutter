@@ -22,6 +22,7 @@ import '../../../features/main/screens/main_layout_screen.dart';
 import '../../../features/auth/screens/biometric_auth_screen.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../../../core/theme/app_theme.dart';
+import '../providers/auth_provider.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -34,7 +35,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _isPasswordVisible = false;
-  final AuthService _authService = AuthService();
   bool _isLoading = false;
   String? _errorMessage;
 
@@ -45,7 +45,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.dispose();
   }
 
-  void _onLogin() async {
+  Future<void> _handleLogin() async {
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
       ToastService.showToast(context, 'Please fill in all fields');
       return;
@@ -57,17 +57,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     });
 
     try {
-      await _authService.signInWithEmailAndPassword(
+      final authService = ref.read(authServiceProvider);
+      final userCredential = await authService.signInWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
-      
+
       if (!mounted) return;
       await HapticService.lightImpact(ref);
 
       // Load PIN status
       await ref.read(pinProvider.notifier).loadPin();
-      
+
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
         CupertinoPageRoute(
@@ -103,11 +104,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
       if (silentSignIn != null) {
         // User was previously signed in - directly authenticate with Firebase
-        final userCredential = await _authService.signInWithGoogle(
+        final authService = ref.read(authServiceProvider);
+        final userCredential = await authService.signInWithGoogle(
           googleAccount: silentSignIn,
         );
         if (!mounted) return;
-        
+
         if (userCredential.user != null) {
           await HapticService.lightImpact(ref);
           await _handleSuccessfulLogin();
@@ -121,18 +123,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (!mounted) return;
 
       if (googleAccount != null) {
-        final userCredential = await _authService.signInWithGoogle(
+        final authService = ref.read(authServiceProvider);
+        final userCredential = await authService.signInWithGoogle(
           googleAccount: googleAccount,
         );
-        
+
         if (!mounted) return;
-        
+
         if (userCredential.user != null) {
           await HapticService.lightImpact(ref);
           await _handleSuccessfulLogin();
         } else {
           ToastService.showToast(
-            context, 
+            context,
             'Failed to sign in with Google. Please try again.',
           );
         }
@@ -140,14 +143,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     } catch (e) {
       debugPrint('Google Sign-In error: $e');
       if (!mounted) return;
-      
+
       String errorMessage = 'Failed to sign in with Google';
       if (e is String) {
         errorMessage = e;
       } else if (e is FirebaseAuthException) {
         errorMessage = e.message ?? errorMessage;
       }
-      
+
       ToastService.showToast(context, errorMessage);
     } finally {
       if (mounted) {
@@ -160,18 +163,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _showAccountPicker() async {
     final googleSignIn = GoogleSignIn();
-    
+
     try {
       // Get current signed in account
       final currentAccount = await googleSignIn.signInSilently();
       if (!mounted) return;
 
       final isDarkMode = ref.watch(themeProvider);
-      
+
       showCupertinoModalPopup(
         context: context,
         builder: (context) => Container(
-          color: isDarkMode ? AppTheme.backgroundDark : AppTheme.backgroundLight,
+          color:
+              isDarkMode ? AppTheme.backgroundDark : AppTheme.backgroundLight,
           child: SafeArea(
             top: false,
             child: Column(
@@ -182,7 +186,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   decoration: BoxDecoration(
                     border: Border(
                       bottom: BorderSide(
-                        color: isDarkMode ? CupertinoColors.systemGrey4 : CupertinoColors.systemGrey5,
+                        color: isDarkMode
+                            ? CupertinoColors.systemGrey4
+                            : CupertinoColors.systemGrey5,
                         width: 0.5,
                       ),
                     ),
@@ -194,7 +200,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w600,
-                          color: isDarkMode ? CupertinoColors.white : CupertinoColors.black,
+                          color: isDarkMode
+                              ? CupertinoColors.white
+                              : CupertinoColors.black,
                         ),
                       ),
                       const Spacer(),
@@ -204,7 +212,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           'Cancel',
                           style: TextStyle(
                             fontSize: 17,
-                            color: isDarkMode ? CupertinoColors.activeBlue : CupertinoColors.systemBlue,
+                            color: isDarkMode
+                                ? CupertinoColors.activeBlue
+                                : CupertinoColors.systemBlue,
                           ),
                         ),
                         onPressed: () => Navigator.pop(context),
@@ -220,7 +230,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        if (currentAccount != null) 
+                        if (currentAccount != null)
                           _buildAccountTile(currentAccount),
                         _buildAddAccountTile(),
                       ],
@@ -241,7 +251,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Widget _buildAccountTile(GoogleSignInAccount account) {
     final isDarkMode = ref.watch(themeProvider);
-    
+
     return CupertinoButton(
       padding: EdgeInsets.zero,
       onPressed: () async {
@@ -253,7 +263,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         decoration: BoxDecoration(
           border: Border(
             bottom: BorderSide(
-              color: isDarkMode ? CupertinoColors.systemGrey4 : CupertinoColors.systemGrey5,
+              color: isDarkMode
+                  ? CupertinoColors.systemGrey4
+                  : CupertinoColors.systemGrey5,
               width: 0.5,
             ),
           ),
@@ -262,13 +274,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           children: [
             CircleAvatar(
               radius: 20,
-              backgroundColor: isDarkMode ? CupertinoColors.systemGrey : CupertinoColors.systemGrey2,
-              backgroundImage: account.photoUrl != null ? NetworkImage(account.photoUrl!) : null,
+              backgroundColor: isDarkMode
+                  ? CupertinoColors.systemGrey
+                  : CupertinoColors.systemGrey2,
+              backgroundImage: account.photoUrl != null
+                  ? NetworkImage(account.photoUrl!)
+                  : null,
               child: account.photoUrl == null
                   ? Icon(
                       CupertinoIcons.person_circle_fill,
                       size: 40,
-                      color: isDarkMode ? CupertinoColors.white : CupertinoColors.black,
+                      color: isDarkMode
+                          ? CupertinoColors.white
+                          : CupertinoColors.black,
                     )
                   : null,
             ),
@@ -281,14 +299,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     account.displayName ?? '',
                     style: TextStyle(
                       fontSize: 17,
-                      color: isDarkMode ? CupertinoColors.white : CupertinoColors.black,
+                      color: isDarkMode
+                          ? CupertinoColors.white
+                          : CupertinoColors.black,
                     ),
                   ),
                   Text(
                     account.email,
                     style: TextStyle(
                       fontSize: 15,
-                      color: isDarkMode ? CupertinoColors.systemGrey : CupertinoColors.systemGrey2,
+                      color: isDarkMode
+                          ? CupertinoColors.systemGrey
+                          : CupertinoColors.systemGrey2,
                     ),
                   ),
                 ],
@@ -302,7 +324,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Widget _buildAddAccountTile() {
     final isDarkMode = ref.watch(themeProvider);
-    
+
     return CupertinoButton(
       padding: EdgeInsets.zero,
       onPressed: () async {
@@ -318,11 +340,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               height: 40,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: isDarkMode ? CupertinoColors.systemGrey6 : CupertinoColors.systemGrey5,
+                color: isDarkMode
+                    ? CupertinoColors.systemGrey6
+                    : CupertinoColors.systemGrey5,
               ),
               child: Icon(
                 CupertinoIcons.add,
-                color: isDarkMode ? CupertinoColors.activeBlue : CupertinoColors.systemBlue,
+                color: isDarkMode
+                    ? CupertinoColors.activeBlue
+                    : CupertinoColors.systemBlue,
               ),
             ),
             const SizedBox(width: 12),
@@ -330,7 +356,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               'Add another account',
               style: TextStyle(
                 fontSize: 17,
-                color: isDarkMode ? CupertinoColors.activeBlue : CupertinoColors.systemBlue,
+                color: isDarkMode
+                    ? CupertinoColors.activeBlue
+                    : CupertinoColors.systemBlue,
               ),
             ),
           ],
@@ -350,32 +378,33 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     });
 
     try {
-      final userCredential = await _authService.signInWithGoogle(
+      final authService = ref.read(authServiceProvider);
+      final userCredential = await authService.signInWithGoogle(
         googleAccount: googleAccount,
       );
-      
+
       if (!mounted) return;
-      
+
       if (userCredential.user != null) {
         await HapticService.lightImpact(ref);
         await _handleSuccessfulLogin();
       } else {
         ToastService.showToast(
-          context, 
+          context,
           'Failed to sign in with Google. Please try again.',
         );
       }
     } catch (e) {
       debugPrint('Google Sign-In error: $e');
       if (!mounted) return;
-      
+
       String errorMessage = 'Failed to sign in with Google';
       if (e is String) {
         errorMessage = e;
       } else if (e is FirebaseAuthException) {
         errorMessage = e.message ?? errorMessage;
       }
-      
+
       ToastService.showToast(context, errorMessage);
     } finally {
       if (mounted) {
@@ -428,7 +457,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ),
           );
           break;
-        
+
         case SecurityMethod.pin:
           Navigator.of(context).pushReplacement(
             CupertinoPageRoute(
@@ -471,7 +500,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       },
       child: SystemUIWrapper(
         child: CupertinoPageScaffold(
-          backgroundColor: isDarkMode ? CupertinoColors.black : CupertinoColors.white,
+          backgroundColor:
+              isDarkMode ? CupertinoColors.black : CupertinoColors.white,
           child: Column(
             children: [
               Expanded(
@@ -554,8 +584,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 onTap: () async {
                                   await HapticService.lightImpact(ref);
                                   setState(() {
-                                    _isPasswordVisible =
-                                        !_isPasswordVisible;
+                                    _isPasswordVisible = !_isPasswordVisible;
                                   });
                                 },
                                 child: Icon(
@@ -582,12 +611,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: [
                               CupertinoButton(
-                                padding: const EdgeInsets.symmetric(horizontal: 5),
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 5),
                                 onPressed: () async {
                                   await HapticService.lightImpact(ref);
                                   Navigator.of(context).push(
                                     CupertinoPageRoute(
-                                      builder: (context) => const ForgotPasswordScreen(),
+                                      builder: (context) =>
+                                          const ForgotPasswordScreen(),
                                     ),
                                   );
                                 },
@@ -604,7 +635,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           if (_errorMessage != null) ...[
                             const SizedBox(height: 2),
                             Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 16),
                               child: Text(
                                 _errorMessage!,
                                 style: const TextStyle(
@@ -617,12 +649,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ],
                           const SizedBox(height: 24),
                           HapticFeedbackWrapper(
-                            onPressed: _isLoading ? () {} : _onLogin,
+                            onPressed: _isLoading ? () {} : _handleLogin,
                             child: CupertinoButton.filled(
-                              onPressed: _isLoading ? () {} : _onLogin,
+                              onPressed: _isLoading ? () {} : _handleLogin,
                               borderRadius: BorderRadius.circular(12),
                               child: _isLoading
-                                  ? const CupertinoActivityIndicator(color: CupertinoColors.white)
+                                  ? const CupertinoActivityIndicator(
+                                      color: CupertinoColors.white)
                                   : const Text('LOGIN'),
                             ),
                           ),
@@ -635,8 +668,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 ),
                               ),
                               Padding(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 16),
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 16),
                                 child: Text(
                                   'Or',
                                   style: TextStyle(
@@ -654,15 +687,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ),
                           const SizedBox(height: 24),
                           HapticFeedbackWrapper(
-                            onPressed: _isLoading ? () {} : () => _handleGoogleSignIn(),
+                            onPressed: _isLoading
+                                ? () {}
+                                : () => _handleGoogleSignIn(),
                             child: CupertinoButton(
-                              onPressed: _isLoading ? () {} : () => _handleGoogleSignIn(),
+                              onPressed: _isLoading
+                                  ? () {}
+                                  : () => _handleGoogleSignIn(),
                               color: isDarkMode
                                   ? CupertinoColors.black
                                   : CupertinoColors.white,
                               borderRadius: BorderRadius.circular(12),
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 12),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 mainAxisSize: MainAxisSize.min,
