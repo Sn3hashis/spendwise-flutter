@@ -1,54 +1,75 @@
+import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class Payee {
   final String id;
   final String name;
-  final String? phone;
   final String? email;
+  final String? phone;
   final String? imageUrl;
+  final DateTime createdAt;
+  final DateTime updatedAt;
 
   const Payee({
     required this.id,
     required this.name,
-    this.phone,
     this.email,
+    this.phone,
     this.imageUrl,
+    required this.createdAt, 
+    required this.updatedAt,
   });
 
-  // Add toJson method
+  factory Payee.fromJson(Map<String, dynamic> json) {
+    return Payee(
+      id: json['id'],
+      name: json['name'],
+      email: json['email'],
+      phone: json['phone'],
+      imageUrl: json['imageUrl'],
+      createdAt: _parseDateTime(json['createdAt']),
+      updatedAt: _parseDateTime(json['updatedAt']),
+    );
+  }
+
+  // Helper method to parse different date formats
+  static DateTime _parseDateTime(dynamic value) {
+    if (value is Timestamp) {
+      return value.toDate();
+    } else if (value is String) {
+      return DateTime.parse(value);
+    } else {
+      return DateTime.now(); // Fallback
+    }
+  }
+
   Map<String, dynamic> toJson() => {
     'id': id,
     'name': name,
-    'phone': phone,
     'email': email,
+    'phone': phone,
     'imageUrl': imageUrl,
+    'createdAt': createdAt.toIso8601String(),
+    'updatedAt': updatedAt.toIso8601String(),
   };
 
-  // Add fromJson factory constructor
-  factory Payee.fromJson(Map<String, dynamic> json) => Payee(
-    id: json['id'] as String,
-    name: json['name'] as String,
-    phone: json['phone'] as String?,
-    email: json['email'] as String?,
-    imageUrl: json['imageUrl'] as String?,
-  );
-
-  // Add equality operator
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is Payee &&
-          runtimeType == other.runtimeType &&
-          id == other.id &&
-          name == other.name &&
-          phone == other.phone &&
-          email == other.email &&
-          imageUrl == other.imageUrl;
-
-  // Add hashCode
-  @override
-  int get hashCode =>
-      id.hashCode ^
-      name.hashCode ^
-      phone.hashCode ^
-      email.hashCode ^
-      imageUrl.hashCode;
-} 
+  Payee copyWith({
+    String? id,
+    String? name,
+    String? email,
+    String? phone,
+    String? imageUrl,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) {
+    return Payee(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      email: email ?? this.email,
+      phone: phone ?? this.phone,
+      imageUrl: imageUrl ?? this.imageUrl,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+}

@@ -98,10 +98,13 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
     });
 
     try {
+      final authService = ref.read(authServiceProvider);
       // Show immediate feedback
       ToastService.showToast(context, 'Creating your account...');
 
+
       final authService = ref.read(authServiceProvider);
+
       final userCredential = await authService.signUpWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text,

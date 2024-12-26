@@ -6,6 +6,7 @@ import 'package:lottie/lottie.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
+import 'package:uuid/uuid.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/providers/theme_provider.dart';
 import '../models/payee_model.dart';
@@ -403,11 +404,13 @@ class _AddPayeeScreenState extends ConsumerState<AddPayeeScreen> {
                       }
 
                       final payee = Payee(
-                        id: widget.payee?.id ?? DateTime.now().toString(),
+                        id: widget.payee?.id ?? const Uuid().v4(),
                         name: _nameController.text,
-                        phone: _phoneController.text.isEmpty ? null : _phoneController.text,
                         email: _emailController.text.isEmpty ? null : _emailController.text,
-                        imageUrl: permanentImagePath,
+                        phone: _phoneController.text.isEmpty ? null : _phoneController.text,
+                        imageUrl: _imagePath,
+                        createdAt: widget.payee?.createdAt ?? DateTime.now(), // Add timestamp
+                        updatedAt: DateTime.now(), // Always update timestamp
                       );
 
                       if (widget.payee != null) {
@@ -443,4 +446,4 @@ class _AddPayeeScreenState extends ConsumerState<AddPayeeScreen> {
     _emailController.dispose();
     super.dispose();
   }
-} 
+}

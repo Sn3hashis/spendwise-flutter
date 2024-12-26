@@ -11,13 +11,20 @@ import '../providers/budget_provider.dart';
 import '../../../core/providers/currency_provider.dart';
 import 'package:uuid/uuid.dart';
 import 'package:flutter/material.dart' show Colors;
+import '../../transactions/models/transaction_model.dart';
 
 class CreateBudgetScreen extends ConsumerStatefulWidget {
   final Budget? budget;
+  final bool isEditingCategory;
+  final Category? category;
+  final bool isGoal;  // Add this parameter
 
   const CreateBudgetScreen({
     super.key,
     this.budget,
+    this.isEditingCategory = false,
+    this.category,
+    this.isGoal = false,  // Add with default value
   });
 
   @override
@@ -28,25 +35,34 @@ class _CreateBudgetScreenState extends ConsumerState<CreateBudgetScreen> {
   final TextEditingController _amountController = TextEditingController();
   Category? _selectedCategory;
   bool _isRecurring = false;
-  RecurringType _recurringType = RecurringType.monthly;
+  RepeatFrequency _recurringType = RepeatFrequency.monthly;
   bool _isValid = false;
   double _alertThreshold = 0.8;
   final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _notesController = TextEditingController();
   DateTime _startDate = DateTime.now();
   DateTime _endDate = DateTime.now().add(Duration(days: 30));
+  CategoryType _selectedCategoryType = CategoryType.expense;
 
   @override
   void initState() {
     super.initState();
-    if (widget.budget != null) {
+    if (widget.isEditingCategory) {
+      _selectedCategory = widget.category;
+      _selectedCategoryType = widget.category?.type ?? CategoryType.expense;
+    } else if (widget.budget != null) {
       _amountController.text = widget.budget!.amount.toString();
       _selectedCategory = widget.budget!.category;
       _isRecurring = widget.budget!.isRecurring;
       _recurringType = widget.budget!.recurringType;
       _alertThreshold = widget.budget!.alertThreshold;
       _nameController.text = widget.budget!.name;
+      _notesController.text = widget.budget!.notes;
       _startDate = widget.budget!.startDate;
       _endDate = widget.budget!.endDate;
+    } else {
+      // Set recurring based on isGoal parameter for new budgets
+      _isRecurring = widget.isGoal;
     }
     _amountController.addListener(_validateInputs);
   }
@@ -55,6 +71,7 @@ class _CreateBudgetScreenState extends ConsumerState<CreateBudgetScreen> {
   void dispose() {
     _amountController.dispose();
     _nameController.dispose();
+    _notesController.dispose();
     super.dispose();
   }
 
@@ -67,13 +84,39 @@ class _CreateBudgetScreenState extends ConsumerState<CreateBudgetScreen> {
     });
   }
 
-  void _showCategoryPicker() {
-    final categories = ref.read(categoriesProvider);
+  void _showCategoryPicker() async {
+    await Future.microtask(() {});
+    
+    if (!mounted) return;
+    
+    final categories = ref.read(categoriesProvider)
+        .where((cat) => cat.type == _selectedCategoryType)
+        .toList();
+        
+    if (categories.isEmpty) {
+      showCupertinoDialog(
+        context: context,
+        builder: (context) => CupertinoAlertDialog(
+          title: const Text('No Categories'),
+          content: Text('No ${_selectedCategoryType == CategoryType.income ? 'income' : 'expense'} categories available.'),
+          actions: [
+            CupertinoActionSheetAction(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    categories.sort((a, b) => a.name.compareTo(b.name));
     
     showCupertinoModalPopup(
       context: context,
       builder: (context) => CupertinoActionSheet(
-        title: const Text('Select Category'),
+        title: Text('Select ${_selectedCategoryType == CategoryType.income ? 'Income' : 'Expense'} Category'),
+        message: Text('${categories.length} categories available'),
         actions: categories.map((category) => 
           CupertinoActionSheetAction(
             onPressed: () {
@@ -83,22 +126,57 @@ class _CreateBudgetScreenState extends ConsumerState<CreateBudgetScreen> {
               _validateInputs();
               Navigator.pop(context);
             },
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Icon(category.icon, color: category.color),
-                    const SizedBox(width: 8),
-                    Text(category.name),
-                  ],
-                ),
-                if (category == _selectedCategory)
-                  const Icon(
-                    CupertinoIcons.check_mark,
-                    color: CupertinoColors.activeBlue,
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: category.color.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(category.icon, color: category.color, size: 20),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                category.name,
+                                style: const TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              if (category.description.isNotEmpty)
+                                Text(
+                                  category.description,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: CupertinoColors.systemGrey,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-              ],
+                  if (category == _selectedCategory)
+                    const Icon(
+                      CupertinoIcons.check_mark,
+                      color: CupertinoColors.activeBlue,
+                    ),
+                ],
+              ),
             ),
           ),
         ).toList(),
@@ -116,28 +194,23 @@ class _CreateBudgetScreenState extends ConsumerState<CreateBudgetScreen> {
 
     await HapticService.lightImpact(ref);
 
-    final amount = double.parse(_amountController.text);
-    final now = DateTime.now();
-    
-    final budget = widget.budget?.copyWith(
-      name: _nameController.text,
-      amount: amount,
+    final budget = Budget(
+      id: widget.budget?.id ?? const Uuid().v4(),
+      name: _selectedCategory!.name, // Use category name instead of nameController
+      notes: _notesController.text,
+      amount: double.parse(_amountController.text),
+      categoryId: _selectedCategory!.id,
       category: _selectedCategory!,
       startDate: _startDate,
       endDate: _endDate,
       isRecurring: _isRecurring,
       recurringType: _recurringType,
       alertThreshold: _alertThreshold,
-    ) ?? Budget(
-      id: const Uuid().v4(),
-      name: _nameController.text,
-      amount: amount,
-      category: _selectedCategory!,
-      startDate: _startDate,
-      endDate: _endDate,
-      isRecurring: _isRecurring,
-      recurringType: _recurringType,
-      alertThreshold: _alertThreshold,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+      type: _selectedCategoryType == CategoryType.income 
+          ? BudgetType.income 
+          : BudgetType.expense,
     );
 
     if (mounted) {
@@ -150,14 +223,43 @@ class _CreateBudgetScreenState extends ConsumerState<CreateBudgetScreen> {
     }
   }
 
-  DateTime _getEndDate(DateTime startDate, RecurringType type) {
+  void _showDeleteConfirmation() {
+    showCupertinoDialog(
+      context: context,
+      builder: (context) => CupertinoAlertDialog(
+        title: const Text('Delete Budget'),
+        content: const Text('Are you sure you want to delete this budget?'),
+        actions: [
+          CupertinoDialogAction(
+            child: const Text('Cancel'),
+            onPressed: () => Navigator.pop(context),
+          ),
+          CupertinoDialogAction(
+            isDestructiveAction: true,
+            onPressed: () async {
+              await ref.read(budgetProvider.notifier).deleteBudget(widget.budget!.id);
+              if (mounted) {
+                Navigator.pop(context); // Close dialog
+                Navigator.pop(context); // Close screen
+              }
+            },
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  DateTime _getEndDate(DateTime startDate, RepeatFrequency type) {
     switch (type) {
-      case RecurringType.monthly:
-        return DateTime(startDate.year, startDate.month + 1, 0);
-      case RecurringType.quarterly:
-        return DateTime(startDate.year, startDate.month + 3, 0);
-      case RecurringType.yearly:
-        return DateTime(startDate.year + 1, startDate.month, 0);
+      case RepeatFrequency.daily:
+        return startDate.add(const Duration(days: 1));
+      case RepeatFrequency.weekly:
+        return startDate.add(const Duration(days: 7));
+      case RepeatFrequency.monthly:
+        return DateTime(startDate.year, startDate.month + 1, startDate.day);
+      case RepeatFrequency.yearly:
+        return DateTime(startDate.year + 1, startDate.month, startDate.day);
     }
   }
 
@@ -165,6 +267,138 @@ class _CreateBudgetScreenState extends ConsumerState<CreateBudgetScreen> {
     if (progress >= 0.8) return CupertinoColors.systemRed;
     if (progress >= 0.6) return CupertinoColors.systemOrange;
     return CupertinoColors.systemPurple;
+  }
+
+  String _getRecurringText(RepeatFrequency type) {
+    switch (type) {
+      case RepeatFrequency.daily:
+        return 'Daily';
+      case RepeatFrequency.weekly:
+        return 'Weekly';
+      case RepeatFrequency.monthly:
+        return 'Monthly';
+      case RepeatFrequency.yearly:
+        return 'Yearly';
+    }
+  }
+
+  Widget _buildCategorySelector(bool isDarkMode) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: isDarkMode ? AppTheme.cardDark : AppTheme.cardLight,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Category Type Selector
+              CupertinoSlidingSegmentedControl<CategoryType>(
+                groupValue: _selectedCategoryType,
+                children: const {
+                  CategoryType.expense: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    child: Text('Expense'),
+                  ),
+                  CategoryType.income: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    child: Text('Income'),
+                  ),
+                },
+                onValueChanged: (value) {
+                  if (value != null) {
+                    setState(() {
+                      _selectedCategoryType = value;
+                      // Clear selected category if type changes
+                      if (_selectedCategory?.type != value) {
+                        _selectedCategory = null;
+                      }
+                    });
+                  }
+                },
+              ),
+              const SizedBox(height: 16),
+              
+              // Category Selector
+              GestureDetector(
+                onTap: _showCategoryPicker,
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: isDarkMode 
+                        ? AppTheme.backgroundDark 
+                        : CupertinoColors.systemGrey6,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      if (_selectedCategory != null) ...[
+                        Icon(
+                          _selectedCategory!.icon,
+                          color: _selectedCategory!.color,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(_selectedCategory!.name),
+                      ] else
+                        Text(
+                          'Select ${_selectedCategoryType == CategoryType.income ? 'Income' : 'Expense'} Category',
+                          style: TextStyle(
+                            color: isDarkMode 
+                                ? CupertinoColors.systemGrey 
+                                : CupertinoColors.systemGrey2,
+                          ),
+                        ),
+                      const Spacer(),
+                      const Icon(CupertinoIcons.chevron_down),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNotesInput(bool isDarkMode) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDarkMode ? AppTheme.cardDark : AppTheme.cardLight,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Notes',
+            style: TextStyle(
+              fontSize: 17,
+              color: isDarkMode 
+                  ? CupertinoColors.white 
+                  : CupertinoColors.black,
+            ),
+          ),
+          const SizedBox(height: 8),
+          CupertinoTextField(
+            controller: _notesController,
+            placeholder: 'Add notes about your budget (optional)',
+            padding: const EdgeInsets.all(12),
+            maxLines: 3,
+            decoration: BoxDecoration(
+              color: isDarkMode 
+                  ? AppTheme.backgroundDark 
+                  : CupertinoColors.systemGrey6,
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -178,7 +412,9 @@ class _CreateBudgetScreenState extends ConsumerState<CreateBudgetScreen> {
         backgroundColor: CupertinoColors.systemPurple,
         border: null,
         middle: Text(
-          widget.budget != null ? 'Edit Budget' : 'Create Budget',
+          _selectedCategoryType == CategoryType.income
+              ? (widget.budget != null ? 'Edit Goal' : 'Create Goal')
+              : (widget.budget != null ? 'Edit Budget' : 'Create Budget'),
           style: const TextStyle(color: CupertinoColors.white),
         ),
         leading: CupertinoButton(
@@ -189,15 +425,25 @@ class _CreateBudgetScreenState extends ConsumerState<CreateBudgetScreen> {
           ),
           onPressed: () => Navigator.pop(context),
         ),
+        trailing: widget.budget != null ? CupertinoButton(
+          padding: EdgeInsets.zero,
+          child: const Icon(
+            CupertinoIcons.delete,
+            color: CupertinoColors.white,
+          ),
+          onPressed: _showDeleteConfirmation,
+        ) : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
-            padding: EdgeInsets.fromLTRB(24, 32, 24, 16),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
             child: Text(
-              'How much do yo want to spend?',
-              style: TextStyle(
+              _selectedCategoryType == CategoryType.income
+                  ? 'What is your target?'
+                  : 'How much do you want to spend?',
+              style: const TextStyle(
                 fontSize: 24,
                 color: CupertinoColors.white,
                 fontWeight: FontWeight.w600,
@@ -247,32 +493,9 @@ class _CreateBudgetScreenState extends ConsumerState<CreateBudgetScreen> {
               child: ListView(
                 padding: const EdgeInsets.all(24),
                 children: [
-                  // Category Selector
-                  GestureDetector(
-                    onTap: _showCategoryPicker,
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: isDarkMode ? AppTheme.cardDark : AppTheme.cardLight,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Row(
-                        children: [
-                          if (_selectedCategory != null) ...[
-                            Icon(
-                              _selectedCategory!.icon,
-                              color: _selectedCategory!.color,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(_selectedCategory!.name),
-                          ] else
-                            const Text('Select Category'),
-                          const Spacer(),
-                          const Icon(CupertinoIcons.chevron_down),
-                        ],
-                      ),
-                    ),
-                  ),
+                  _buildCategorySelector(isDarkMode),
+                  const SizedBox(height: 24),
+                  _buildNotesInput(isDarkMode),
                   const SizedBox(height: 24),
                   
                   // Alert Option
@@ -414,4 +637,4 @@ class _CreateBudgetScreenState extends ConsumerState<CreateBudgetScreen> {
       ),
     );
   }
-} 
+}

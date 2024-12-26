@@ -1,8 +1,9 @@
-import 'package:flutter/material.dart' show Theme, ThemeData;
 import 'package:flutter/cupertino.dart';
-import '../../../core/theme/app_theme.dart';
+import 'package:flutter/material.dart' show Theme, ThemeData, Brightness;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/providers/theme_provider.dart';
+import '../../../core/widgets/system_ui_wrapper.dart';
 import 'package:lottie/lottie.dart';
 import '../../../core/widgets/haptic_feedback_wrapper.dart';
 
@@ -15,8 +16,8 @@ class NotificationSelectorScreen extends ConsumerWidget {
   });
 
   static const List<(IconData, String, String)> options = [
-    (CupertinoIcons.bell_fill, 'On', 'Enable push notifications'),
-    (CupertinoIcons.bell_slash_fill, 'Off', 'Disable all notifications'),
+    (CupertinoIcons.bell_fill, 'On', 'Enable notifications'),
+    (CupertinoIcons.bell_slash_fill, 'Off', 'Disable notifications'),
   ];
 
   @override
@@ -133,4 +134,4 @@ class NotificationSelectorScreen extends ConsumerWidget {
       ),
     );
   }
-} 
+}

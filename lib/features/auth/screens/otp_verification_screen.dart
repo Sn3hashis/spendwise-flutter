@@ -95,7 +95,11 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
 
     try {
       final authService = ref.read(authServiceProvider);
+
       final userCredential = await authService.verifyOTP(
+
+      await authService.verifyOTP(
+
         email: widget.email,
         otp: currentOtp,
         password: widget.password,

@@ -9,10 +9,12 @@ import '../providers/categories_provider.dart';
 
 class AddCategoryScreen extends ConsumerStatefulWidget {
   final Category? category;
+  final bool isEditingCategory;
 
   const AddCategoryScreen({
     super.key,
     this.category,
+    this.isEditingCategory = false,
   });
 
   @override
@@ -68,7 +70,8 @@ class _AddCategoryScreenState extends ConsumerState<AddCategoryScreen> {
   @override
   void initState() {
     super.initState();
-    if (widget.category != null && !widget.category!.isCustom) {
+    // Don't allow editing default categories
+    if (widget.category != null && widget.category!.isDefault == true) {
       Navigator.pop(context);
     }
     _nameController = TextEditingController(text: widget.category?.name);
@@ -85,26 +88,54 @@ class _AddCategoryScreenState extends ConsumerState<AddCategoryScreen> {
     super.dispose();
   }
 
-  void _saveCategory() {
-    if (_nameController.text.isEmpty) return;
-
-    final category = Category(
-      id: widget.category?.id ?? DateTime.now().toString(),
-      name: _nameController.text,
-      description: _descriptionController.text,
-      icon: _selectedIcon,
-      color: _selectedColor,
-      type: _selectedType,
-      isCustom: true,
+  void _showAlert(String message, {bool isError = false}) {
+    showCupertinoDialog(
+      context: context,
+      builder: (context) => CupertinoAlertDialog(
+        title: Text(isError ? 'Error' : 'Success'),
+        content: Text(message),
+        actions: [
+          CupertinoDialogAction(
+            child: const Text('OK'),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ],
+      ),
     );
+  }
 
-    if (widget.category != null) {
-      ref.read(categoriesProvider.notifier).updateCategory(category);
-    } else {
-      ref.read(categoriesProvider.notifier).addCategory(category);
+  Future<void> _saveCategory() async {
+    final name = _nameController.text.trim();
+    if (name.isEmpty) {
+      _showAlert('Please enter a category name', isError: true);
+      return;
     }
 
-    Navigator.pop(context);
+    try {
+      final newCategory = Category(
+        id: '', // Will be set by the provider
+        name: name,
+        description: _descriptionController.text.trim(),
+        icon: _selectedIcon,
+        color: _selectedColor,
+        type: _selectedType,
+        isDefault: false,
+      );
+
+      await ref.read(categoriesProvider.notifier).addCategory(newCategory);
+      
+      if (mounted) {
+        Navigator.of(context).pop();
+        _showAlert('Category added successfully');
+      }
+    } catch (e) {
+      if (mounted) {
+        _showAlert(
+          e.toString().replaceAll('Exception: ', ''),
+          isError: true,
+        );
+      }
+    }
   }
 
   @override
@@ -278,4 +309,4 @@ class _AddCategoryScreenState extends ConsumerState<AddCategoryScreen> {
       ),
     );
   }
-} 
+}

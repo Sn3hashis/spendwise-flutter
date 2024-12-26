@@ -154,6 +154,7 @@ class _BaseTransactionScreenState extends ConsumerState<BaseTransactionScreen> {
   bool _showCategoryMessage = false;
   Timer? _messageTimer;
   Payee? _selectedPayee;
+  Budget? _selectedBudget;
 
   static const _padding = EdgeInsets.all(24);
   static const _spacing = SizedBox(height: 16);
@@ -241,28 +242,14 @@ class _BaseTransactionScreenState extends ConsumerState<BaseTransactionScreen> {
     final amount = double.parse(_amountController.text);
     final now = DateTime.now();
     
-    // Find matching budget for the category
-    final budgets = ref.read(budgetProvider);
-    Budget? matchingBudget;
-    try {
-      matchingBudget = budgets.firstWhere(
-        (budget) => 
-          budget.category.id == _selectedCategory!.id &&
-          budget.isActive() &&
-          budget.isDateInPeriod(now),
-      );
-    } catch (_) {
-      // No matching budget found
-      matchingBudget = null;
-    }
-
+    final budget = _findMatchingBudget();
     final transaction = Transaction(
       id: const Uuid().v4(),
       description: _descriptionController.text,
       amount: widget.type == TransactionType.expense ? -amount.abs() : amount.abs(),
       date: now,
       category: _selectedCategory!,
-      budgetId: matchingBudget?.id,
+      budgetId: budget?.id,
       type: widget.type,
       attachments: _attachments,
       currencyCode: ref.read(settingsProvider).currency,
@@ -927,6 +914,22 @@ class _BaseTransactionScreenState extends ConsumerState<BaseTransactionScreen> {
         ),
       ),
     );
+  }
+
+  Budget? _findMatchingBudget() {
+    if (_selectedCategory == null) return null;
+    
+    final budgets = ref.read(budgetProvider);
+    try {
+      return budgets.firstWhere(
+        (budget) =>
+            budget.category.id == _selectedCategory!.id &&
+            budget.isActive() &&
+            budget.isDateInPeriod(DateTime.now()),
+      );
+    } catch (e) {
+      return null;
+    }
   }
 
   @override

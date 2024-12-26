@@ -74,6 +74,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = ref.watch(themeProvider);
+    final authService = ref.watch(authServiceProvider);
 
     return WillPopScope(
       onWillPop: _onWillPop,

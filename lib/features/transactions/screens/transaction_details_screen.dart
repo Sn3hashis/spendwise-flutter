@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' show Colors;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:spendwise/core/providers/currency_provider.dart';
 import 'dart:io';
 import 'dart:async';
 import '../../../core/providers/theme_provider.dart';
@@ -312,7 +313,7 @@ class TransactionDetailsScreen extends ConsumerWidget {
     final isDarkMode = ref.watch(themeProvider);
     final updatedTransaction = ref.watch(transactionsProvider)
         .firstWhere((t) => t.id == transaction.id, orElse: () => transaction);
-    final currencySymbol = getCurrencySymbol(updatedTransaction.currencyCode);
+    final currentCurrency = ref.watch(currencyProvider);
     final backgroundColor = getBackgroundColor(updatedTransaction.type);
 
     return CupertinoPageScaffold(
@@ -361,7 +362,8 @@ class TransactionDetailsScreen extends ConsumerWidget {
             child: Column(
               children: [
                 Text(
-                  '$currencySymbol${updatedTransaction.amount.abs()}',
+                  // Simply use current currency symbol with original amount
+                  '${currentCurrency.symbol}${updatedTransaction.amount.abs()}',
                   style: const TextStyle(
                     fontSize: 64,
                     fontWeight: FontWeight.bold,
@@ -481,4 +483,4 @@ class TransactionDetailsScreen extends ConsumerWidget {
       ),
     );
   }
-} 
+}
